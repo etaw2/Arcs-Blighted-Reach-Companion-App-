@@ -1,0 +1,402 @@
+:root {
+  font-family: Inter, system-ui, sans-serif;
+  color: #f2f2f2;
+  background: #121212;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #121212;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid #555;
+  background: #232323;
+  color: #f3f3f3;
+  border-radius: 8px;
+  padding: 0.35rem 0.6rem;
+}
+
+button:hover {
+  background: #313131;
+}
+
+input {
+  background: #1c1c1c;
+  color: #f3f3f3;
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 0.45rem 0.65rem;
+}
+
+.app-shell {
+  padding: 1rem;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.topbar h1 {
+  margin: 0 0 0.35rem;
+}
+
+.topbar p {
+  margin: 0;
+  color: #c7c7c7;
+}
+
+.reset-button {
+  background: #5c2222;
+}
+
+.main-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 1rem;
+  align-items: start;
+}
+
+.board-shell,
+.panel,
+.player-card {
+  background: #181818;
+  border: 1px solid #333;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.board-shell {
+  padding: 0.75rem;
+}
+
+.board-image-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.board-image {
+  display: block;
+  width: 100%;
+  border-radius: 14px;
+}
+
+/* SVG overlay for full-space click regions */
+.board-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Every clickable SVG shape */
+.board-space {
+  pointer-events: auto;
+  cursor: pointer;
+  fill: rgba(255, 255, 255, 0.02);
+  stroke: rgba(255, 255, 255, 0.16);
+  stroke-width: 2;
+}
+
+.board-space:hover {
+  fill: rgba(255, 209, 102, 0.14);
+  stroke: rgba(255, 209, 102, 0.85);
+  stroke-width: 3;
+}
+
+/* Selected region */
+.board-space.active {
+  fill: rgba(255, 209, 102, 0.18);
+  stroke: rgba(255, 209, 102, 1);
+  stroke-width: 4;
+}
+
+/* If you later want the shapes invisible except when selected,
+   replace the .board-space and .board-space:hover rules with:
+   fill: transparent;
+   stroke: transparent;
+*/
+
+.panel {
+  padding: 1rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.panel h2 {
+  margin: 0;
+}
+
+.ghost-button {
+  background: transparent;
+}
+
+.counter-row,
+.list-row,
+.inline-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.counter-row,
+.subsection {
+  margin-top: 0.85rem;
+}
+
+.list-row {
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  border-top: 1px solid #2c2c2c;
+}
+
+.chip-row {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-top: 0.45rem;
+}
+
+.player-section {
+  margin-top: 1.25rem;
+}
+
+.player-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.player-card {
+  padding: 0.8rem;
+}
+
+.player-title {
+  margin: 0 0 0.75rem;
+}
+
+.player-title.blue {
+  color: #8bb8ff;
+}
+
+.player-title.red {
+  color: #ff8d8d;
+}
+
+.player-title.yellow {
+  color: #ffe17a;
+}
+
+.player-title.white {
+  color: #f6f6f6;
+}
+
+.player-board-image {
+  width: 100%;
+  border-radius: 12px;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.player-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.inline-controls label {
+  min-width: 78px;
+  color: #cfcfcf;
+}
+
+.inline-controls.grow input {
+  flex: 1;
+}
+
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.resource-box {
+  border: 1px solid #383838;
+  border-radius: 12px;
+  padding: 0.55rem;
+  background: #202020;
+}
+
+.resource-box div {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+
+.selected-chip {
+  border-color: #ffd166;
+  color: #ffd166;
+}
+
+@media (max-width: 1100px) {
+  .main-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    position: static;
+  }
+}
+.coord-panel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  width: 230px;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: rgba(12, 12, 12, 0.88);
+  border: 1px solid #444;
+  color: #f3f3f3;
+  font-size: 0.9rem;
+}
+
+.coord-panel button {
+  margin-top: 0.5rem;
+}
+
+.coord-points {
+  margin-top: 0.35rem;
+  font-family: monospace;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.coord-axis-label {
+  fill: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+  font-family: monospace;
+  pointer-events: none;
+}
+
+.coord-crosshair {
+  stroke: rgba(255, 209, 102, 0.55);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+.coord-dot {
+  fill: rgba(255, 209, 102, 0.95);
+  pointer-events: none;
+}
+
+.coord-readout {
+  fill: #ffd166;
+  font-size: 15px;
+  font-family: monospace;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.coord-panel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  width: 230px;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: rgba(12, 12, 12, 0.88);
+  border: 1px solid #444;
+  color: #f3f3f3;
+  font-size: 0.9rem;
+}
+
+.coord-panel button {
+  margin-top: 0.5rem;
+}
+
+.coord-points {
+  margin-top: 0.35rem;
+  font-family: monospace;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.coord-axis-label {
+  fill: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+  font-family: monospace;
+  pointer-events: none;
+}
+
+.coord-crosshair {
+  stroke: rgba(255, 209, 102, 0.55);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+.coord-dot {
+  fill: rgba(255, 209, 102, 0.95);
+  pointer-events: none;
+}
+
+.coord-readout {
+  fill: #ffd166;
+  font-size: 15px;
+  font-family: monospace;
+  font-weight: 700;
+  pointer-events: none;
+}
+/*makes the dropdowns match app*/
+.inline-controls select {
+  min-width: 140px;
+  background: #111;
+  color: #f5f5f5;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+}
+
+.inline-controls select:hover {
+  border-color: #666;
+}
+
+.inline-controls select:focus {
+  outline: none;
+  border-color: #888;
+  box-shadow: 0 0 0 1px #888;
+}
+
+.inline-controls option {
+  background: #111;
+  color: #f5f5f5;
+}

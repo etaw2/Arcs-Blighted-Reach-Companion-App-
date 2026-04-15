@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/gameState.ts","./src/gameStore.ts","./src/main.tsx","./src/components/BoardOverlay.tsx","./src/components/PlayerBoards.tsx","./src/components/SelectedSpacePanel.tsx"],"version":"5.9.3"}
