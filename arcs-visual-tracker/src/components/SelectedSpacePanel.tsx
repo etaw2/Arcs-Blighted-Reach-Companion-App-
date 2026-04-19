@@ -78,31 +78,32 @@ export default function SelectedSpacePanel() {
         </div>
 
         <div className="subsection">
-          <strong>Add ship</strong>
-          <div className="chip-row">
-            {shipColors.map((color) => (
-              <button key={color} onClick={() => addShipToGate(selectedSpace.clusterId, color)}>
-                {color}
-              </button>
-            ))}
-          </div>
-        </div>
+  <strong>Ships</strong>
+  <div className="stacked-counter-list">
+    {shipColors.map((color) => {
+      const count = gate.ships.filter((ship) => ship.color === color).length;
 
-        <div className="subsection">
-          <strong>Ships</strong>
-          {gate.ships.length === 0 ? (
-            <p>No ships.</p>
-          ) : (
-            gate.ships.map((ship, index) => (
-              <div className="list-row" key={`${ship.color}-${index}`}>
-                <span>{ship.color}</span>
-                <button onClick={() => removeShipFromGate(selectedSpace.clusterId, index)}>
-                  Remove
-                </button>
-              </div>
-            ))
-          )}
+      return (
+        <div className="counter-row" key={color}>
+          <span>{color}: {count}</span>
+          <button
+            onClick={() => {
+              const indexToRemove = gate.ships.findIndex((ship) => ship.color === color);
+              if (indexToRemove !== -1) {
+                removeShipFromGate(selectedSpace.clusterId, indexToRemove);
+              }
+            }}
+          >
+            -
+          </button>
+          <button onClick={() => addShipToGate(selectedSpace.clusterId, color)}>
+            +
+          </button>
         </div>
+      );
+    })}
+  </div>
+</div>
       </aside>
     );
   }
@@ -197,34 +198,34 @@ export default function SelectedSpacePanel() {
       </div>
 
       <div className="subsection">
-        <strong>Add ship</strong>
-        <div className="chip-row">
-          {shipColors.map((color) => (
-            <button
-              key={color}
-              onClick={() => addShipToPlanet(selectedSpace.clusterId, selectedSpace.planetKey, color)}
-            >
-              {color}
-            </button>
-          ))}
-        </div>
-      </div>
+  <strong>Ships</strong>
+  <div className="stacked-counter-list">
+    {shipColors.map((color) => {
+      const count = planet.ships.filter((ship) => ship.color === color).length;
 
-      <div className="subsection">
-        <strong>Ships</strong>
-        {planet.ships.length === 0 ? (
-          <p>No ships.</p>
-        ) : (
-          planet.ships.map((ship, index) => (
-            <div className="list-row" key={`${ship.color}-${index}`}>
-              <span>{ship.color}</span>
-              <button onClick={() => removeShipFromPlanet(selectedSpace.clusterId, selectedSpace.planetKey, index)}>
-                Remove
-              </button>
-            </div>
-          ))
-        )}
-      </div>
+      return (
+        <div className="counter-row" key={color}>
+          <span>{color}: {count}</span>
+          <button
+            onClick={() => {
+              const indexToRemove = planet.ships.findIndex((ship) => ship.color === color);
+              if (indexToRemove !== -1) {
+                removeShipFromPlanet(selectedSpace.clusterId, selectedSpace.planetKey, indexToRemove);
+              }
+            }}
+          >
+            -
+          </button>
+          <button
+            onClick={() => addShipToPlanet(selectedSpace.clusterId, selectedSpace.planetKey, color)}
+          >
+            +
+          </button>
+        </div>
+      );
+    })}
+  </div>
+</div>
 
       <div className="subsection">
   <strong>Buildings ({planet.buildings.length}/{planet.buildingSpaces})</strong>

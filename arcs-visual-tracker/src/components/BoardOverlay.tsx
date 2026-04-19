@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { useGameStore } from '../gameStore';
 import type { Building, ClusterId, PlanetKey } from '../gameState';
 
+type FlagshipColor = 'blue' | 'red' | 'yellow' | 'white';
+
 const buildingTokenImages = {
   free: {
     city: '/assets/arcs dev_free city.png',
@@ -24,6 +26,15 @@ const buildingTokenImages = {
     starport: '/assets/arcs dev_player piece yellow starport.png',
   },
 } as const;
+
+const flagshipTokenImages: Record<FlagshipColor, string> = {
+  blue: '/assets/arcs dev_player piece blue flagship.png',
+  red: '/assets/arcs dev_player piece red flagship.png',
+  yellow: '/assets/arcs dev_player piece yellow flagship.png',
+  white: '/assets/arcs dev_player piece white flagship.png',
+};
+
+const blightTokenImage = '/assets/arcs dev_punchboard blight front.png';
 
 type SpaceShape =
   | {
@@ -63,8 +74,31 @@ type TokenAnchor = {
   rotation?: number;
 };
 
+type ShipAnchor = {
+  x: number;
+  y: number;
+};
+
 const BUILDING_TOKEN_WIDTH = 85;
 const BUILDING_TOKEN_HEIGHT = 85;
+
+const SHIP_TOKEN_WIDTH = 56;
+const SHIP_TOKEN_HEIGHT = 56;
+const FLAGSHIP_TOKEN_WIDTH = 74;
+const FLAGSHIP_TOKEN_HEIGHT = 74;
+const BLIGHT_TOKEN_WIDTH = 58;
+const BLIGHT_TOKEN_HEIGHT = 58;
+
+const shipColorOrder = ['blue', 'red', 'yellow', 'white', 'imperial'] as const;
+type ShipDisplayColor = (typeof shipColorOrder)[number];
+
+const shipTokenImages: Record<ShipDisplayColor, string> = {
+  blue: '/assets/arcs dev_player piece blue ship.png',
+  red: '/assets/arcs dev_player piece red ship.png',
+  yellow: '/assets/arcs dev_player piece yellow ship.png',
+  white: '/assets/arcs dev_player piece white ship.png',
+  imperial: '/assets/arcs dev_imperial ship.png',
+};
 
 const planetBuildingAnchors: Record<ClusterId, Record<PlanetKey, TokenAnchor[]>> = {
   cluster1: {
@@ -88,7 +122,7 @@ const planetBuildingAnchors: Record<ClusterId, Record<PlanetKey, TokenAnchor[]>>
   },
   cluster3: {
     planetTri: [{ x: 1782, y: 878.5, rotation: 0 }],
-    planetMoon: [{ x: 1509, y: 977, rotation: 0}],
+    planetMoon: [{ x: 1509, y: 977, rotation: 0 }],
     planetHex: [
       { x: 1497.5, y: 1268, rotation: 0 },
       { x: 1576.5, y: 1207.5, rotation: 0 },
@@ -110,7 +144,7 @@ const planetBuildingAnchors: Record<ClusterId, Record<PlanetKey, TokenAnchor[]>>
     planetMoon: [{ x: 373, y: 862, rotation: 0 }],
     planetHex: [
       { x: 123.25, y: 742, rotation: 0 },
-      { x: 202.5, y: 681, rotation: 0},
+      { x: 202.5, y: 681, rotation: 0 },
     ],
   },
   cluster6: {
@@ -120,6 +154,308 @@ const planetBuildingAnchors: Record<ClusterId, Record<PlanetKey, TokenAnchor[]>>
       { x: 342, y: 228, rotation: 0 },
     ],
     planetHex: [{ x: 568, y: 159.5, rotation: 0 }],
+  },
+};
+
+
+const gateFlagshipAnchors: Record<ClusterId, ShipAnchor[]> = {
+  cluster1: [
+    { x: 938, y: 424 },
+    { x: 1000, y: 440 },
+    { x: 1062, y: 456 },
+    { x: 1124, y: 472 },
+  ],
+  cluster2: [
+    { x: 1320, y: 535 },
+    { x: 1368, y: 571 },
+    { x: 1416, y: 607 },
+    { x: 1464, y: 643 },
+  ],
+  cluster3: [
+    { x: 1378, y: 742 },
+    { x: 1334, y: 785 },
+    { x: 1290, y: 828 },
+    { x: 1246, y: 871 },
+  ],
+  cluster4: [
+    { x: 1046, y: 956 },
+    { x: 986, y: 938 },
+    { x: 926, y: 920 },
+    { x: 866, y: 902 },
+  ],
+  cluster5: [
+    { x: 748, y: 780 },
+    { x: 714, y: 730 },
+    { x: 680, y: 680 },
+    { x: 646, y: 630 },
+  ],
+  cluster6: [
+    { x: 704, y: 546 },
+    { x: 744, y: 500 },
+    { x: 784, y: 454 },
+    { x: 824, y: 408 },
+  ],
+};
+
+const gateBlightAnchors: Record<ClusterId, ShipAnchor> = {
+  cluster1: { x: 1172, y: 452 },
+  cluster2: { x: 1280, y: 618 },
+  cluster3: { x: 1304, y: 780 },
+  cluster4: { x: 1095, y: 948 },
+  cluster5: { x: 795, y: 825 },
+  cluster6: { x: 802, y: 560 },
+};
+
+const gateShipAnchors: Record<ClusterId, ShipAnchor[]> = {
+  cluster1: [
+    { x: 933, y: 350 },
+    { x: 933, y: 375 },
+    { x: 933, y: 400 },
+    { x: 933, y: 425 },
+    { x: 933, y: 450 },
+  ],
+  cluster2: [
+    { x: 1400, y: 600 },
+    { x: 1400, y: 625 },
+    { x: 1400, y: 650 },
+    { x: 1400, y: 675 },
+    { x: 1400, y: 700 },
+  ],
+  cluster3: [
+    { x: 1400, y: 795 },
+    { x: 1380, y: 836 },
+    { x: 1360, y: 877 },
+    { x: 1340, y: 918 },
+    { x: 1310, y: 950 },
+  ],
+  cluster4: [
+    { x: 1030, y: 1050 },
+    { x: 971, y: 1040 },
+    { x: 912, y: 1025 },
+    { x: 853, y: 1000 },
+    { x: 815, y: 976 },
+  ],
+  cluster5: [
+    { x: 695, y: 845 },
+    { x: 680, y: 815 },
+    { x: 665, y: 780 },
+    { x: 665, y: 745 },
+    { x: 660, y: 714 },
+  ],
+  cluster6: [
+    { x: 655, y: 580 },
+    { x: 670, y: 550 },
+    { x: 685, y: 520 },
+    { x: 700, y: 490 },
+    { x: 725, y: 460 },
+  ],
+};
+
+const planetShipAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor[]>> = {
+  cluster1: {
+    planetTri: [
+      { x: 992, y: 175 },
+      { x: 992, y: 200 },
+      { x: 992, y: 225 },
+      { x: 992, y: 250 },
+      { x: 992, y: 275 },
+    ],
+    planetMoon: [
+      { x: 1065, y: 175 },
+      { x: 1065, y: 200 },
+      { x: 1065, y: 225 },
+      { x: 1065, y: 250 },
+      { x: 1065, y: 275 },
+    ],
+    planetHex: [
+      { x: 1325, y: 215 },
+      { x: 1305, y: 245 },
+      { x: 1288, y: 275 },
+      { x: 1270, y: 305 },
+      { x: 1250, y: 336 },
+    ],
+  },
+  cluster2: {
+    planetTri: [
+      { x: 1630, y: 430 },
+      { x: 1580, y: 450 },
+      { x: 1530, y: 470 },
+      { x: 1480, y: 488 },
+      { x: 1430, y: 508 },
+    ],
+    planetMoon: [
+      { x: 1716, y: 590 },
+      { x: 1660, y: 600 },
+      { x: 1602, y: 605 },
+      { x: 1545, y: 613 },
+      { x: 1485, y: 618 },
+    ],
+    planetHex: [
+      { x: 1700, y: 755 },
+      { x: 1640, y: 750 },
+      { x: 1584, y: 741 },
+      { x: 1534, y: 725 },
+      { x: 1480, y: 710 },
+    ],
+  },
+  cluster3: {
+    planetTri: [
+      { x: 1660, y: 917 },
+      { x: 1610, y: 900 },
+      { x: 1566, y: 880 },
+      { x: 1520, y: 865 },
+      { x: 1475, y: 845 },
+    ],
+    planetMoon: [
+      { x: 1625, y: 1134 },
+      { x: 1595, y: 1108 },
+      { x: 1565, y: 1084 },
+      { x: 1530, y: 1060 },
+      { x: 1498, y: 1035 },
+    ],
+    planetHex: [
+      { x: 1490, y: 1100 },
+      { x: 1460, y: 1075 },
+      { x: 1430, y: 1050 },
+      { x: 1400, y: 1025 },
+      { x: 1370, y: 1000 },
+    ],
+  },
+  cluster4: {
+    planetTri: [
+      { x: 1072, y: 1225 },
+      { x: 1072, y: 1195 },
+      { x: 1072, y: 1165 },
+      { x: 1072, y: 1135 },
+      { x: 1072, y: 1105 },
+    ],
+    planetMoon: [
+      { x: 1002, y: 1225 },
+      { x: 1002, y: 1195 },
+      { x: 1002, y: 1165 },
+      { x: 1002, y: 1135 },
+      { x: 1002, y: 1105 },
+    ],
+    planetHex: [
+      { x: 720, y: 1190 },
+      { x: 740, y: 1155 },
+      { x: 760, y: 1120 },
+      { x: 780, y: 1085 },
+      { x: 800, y: 1050 },
+    ],
+  },
+  cluster5: {
+    planetTri: [
+      { x: 420, y: 960 },
+      { x: 470, y: 940 },
+      { x: 520, y: 920 },
+      { x: 570, y: 900 },
+      { x: 621, y: 880 },
+    ],
+    planetMoon: [
+      { x: 410, y: 918 },
+      { x: 460, y: 898 },
+      { x: 510, y: 878 },
+      { x: 560, y: 858 },
+      { x: 610, y: 838 },
+    ],
+    planetHex: [
+      { x: 330, y: 760 },
+      { x: 390, y: 755 },
+      { x: 450, y: 748 },
+      { x: 510, y: 740 },
+      { x: 570, y: 735 },
+    ],
+  },
+  cluster6: {
+    planetTri: [
+      { x: 245, y: 576 },
+      { x: 300, y: 584 },
+      { x: 355, y: 592 },
+      { x: 410, y: 600 },
+      { x: 465, y: 608 },
+    ],
+    planetMoon: [
+      { x: 440, y: 435 },
+      { x: 485, y: 455 },
+      { x: 530, y: 470 },
+      { x: 575, y: 487 },
+      { x: 620, y: 505 },
+    ],
+    planetHex: [
+      { x: 595, y: 295 },
+      { x: 615, y: 320 },
+      { x: 645, y: 345 },
+      { x: 675, y: 370 },
+      { x: 705, y: 395 },
+    ],
+  },
+};
+
+
+const planetFlagshipAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor[]>> = {
+  cluster1: {
+    planetTri: [{ x: 795, y: 38 }, { x: 850, y: 38 }, { x: 905, y: 38 }, { x: 960, y: 38 }],
+    planetMoon: [{ x: 1122, y: 166 }, { x: 1188, y: 166 }, { x: 1122, y: 236 }, { x: 1188, y: 236 }],
+    planetHex: [{ x: 1442, y: 116 }, { x: 1512, y: 180 }, { x: 1442, y: 248 }, { x: 1512, y: 312 }],
+  },
+  cluster2: {
+    planetTri: [{ x: 1644, y: 356 }, { x: 1712, y: 356 }, { x: 1644, y: 430 }, { x: 1712, y: 430 }],
+    planetMoon: [{ x: 1816, y: 500 }, { x: 1884, y: 500 }, { x: 1816, y: 572 }, { x: 1884, y: 572 }],
+    planetHex: [{ x: 1728, y: 716 }, { x: 1796, y: 716 }, { x: 1728, y: 790 }, { x: 1796, y: 790 }],
+  },
+  cluster3: {
+    planetTri: [{ x: 1714, y: 908 }, { x: 1782, y: 908 }, { x: 1714, y: 982 }, { x: 1782, y: 982 }],
+    planetMoon: [{ x: 1462, y: 1008 }, { x: 1530, y: 1008 }, { x: 1462, y: 1082 }, { x: 1530, y: 1082 }],
+    planetHex: [{ x: 1422, y: 1188 }, { x: 1490, y: 1188 }, { x: 1422, y: 1262 }, { x: 1490, y: 1262 }],
+  },
+  cluster4: {
+    planetTri: [{ x: 1116, y: 1198 }, { x: 1184, y: 1198 }, { x: 1116, y: 1272 }, { x: 1184, y: 1272 }],
+    planetMoon: [{ x: 826, y: 1210 }, { x: 894, y: 1210 }, { x: 826, y: 1284 }, { x: 894, y: 1284 }],
+    planetHex: [{ x: 560, y: 1202 }, { x: 628, y: 1202 }, { x: 560, y: 1276 }, { x: 628, y: 1276 }],
+  },
+  cluster5: {
+    planetTri: [{ x: 154, y: 1160 }, { x: 222, y: 1160 }, { x: 154, y: 1234 }, { x: 222, y: 1234 }],
+    planetMoon: [{ x: 286, y: 868 }, { x: 354, y: 868 }, { x: 286, y: 942 }, { x: 354, y: 942 }],
+    planetHex: [{ x: 90, y: 748 }, { x: 158, y: 748 }, { x: 90, y: 822 }, { x: 158, y: 822 }],
+  },
+  cluster6: {
+    planetTri: [{ x: 292, y: 534 }, { x: 360, y: 534 }, { x: 292, y: 608 }, { x: 360, y: 608 }],
+    planetMoon: [{ x: 182, y: 300 }, { x: 250, y: 300 }, { x: 182, y: 374 }, { x: 250, y: 374 }],
+    planetHex: [{ x: 494, y: 170 }, { x: 562, y: 170 }, { x: 494, y: 244 }, { x: 562, y: 244 }],
+  },
+};
+
+const planetBlightAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor>> = {
+  cluster1: {
+    planetTri: { x: 890, y: 265 },
+    planetMoon: { x: 1162, y: 286 },
+    planetHex: { x: 1315, y: 346 },
+  },
+  cluster2: {
+    planetTri: { x: 1420, y: 445 },
+    planetMoon: { x: 1490, y: 555 },
+    planetHex: { x: 1515, y: 670 },
+  },
+  cluster3: {
+    planetTri: { x: 1500, y: 800 },
+    planetMoon: { x: 1440, y: 930 },
+    planetHex: { x: 1340, y: 1050 },
+  },
+  cluster4: {
+    planetTri: { x: 1130, y: 1130 },
+    planetMoon: { x: 915, y: 1115 },
+    planetHex: { x: 740, y: 1020 },
+  },
+  cluster5: {
+    planetTri: { x: 620, y: 930 },
+    planetMoon: { x: 570, y: 795 },
+    planetHex: { x: 550, y: 692 },
+  },
+  cluster6: {
+    planetTri: { x: 545, y: 575 },
+    planetMoon: { x: 620, y: 440 },
+    planetHex: { x: 725, y: 348 },
   },
 };
 
@@ -340,6 +676,136 @@ const renderBuildingToken = (
   );
 };
 
+const getShipCounts = (ships: { color: ShipDisplayColor }[]) => {
+  return shipColorOrder.map((color) => ({
+    color,
+    count: ships.filter((ship) => ship.color === color).length,
+  }));
+};
+
+const renderShipCountToken = (
+  color: ShipDisplayColor,
+  count: number,
+  anchor: ShipAnchor,
+  key: string
+) => {
+  return (
+    <g key={key} style={{ pointerEvents: 'none' }}>
+      <image
+        href={shipTokenImages[color]}
+        x={anchor.x - SHIP_TOKEN_WIDTH / 2}
+        y={anchor.y - SHIP_TOKEN_HEIGHT / 2}
+        width={SHIP_TOKEN_WIDTH}
+        height={SHIP_TOKEN_HEIGHT}
+        preserveAspectRatio="xMidYMid meet"
+      />
+      <circle
+  cx={anchor.x + 10}
+  cy={anchor.y + 4}
+  r={9}
+  fill="rgba(0,0,0,0.92)"
+  stroke="white"
+  strokeWidth="2"
+/>
+<text
+  x={anchor.x + 10}
+  y={anchor.y + 9}
+  textAnchor="middle"
+  fontSize="12"
+  fontWeight="700"
+  fill="white"
+>
+  {count}
+</text>
+    </g>
+  );
+};
+
+
+const renderFlagshipToken = (
+  color: FlagshipColor,
+  anchor: ShipAnchor,
+  key: string
+) => {
+  return (
+    <image
+      key={key}
+      href={flagshipTokenImages[color]}
+      x={anchor.x - FLAGSHIP_TOKEN_WIDTH / 2}
+      y={anchor.y - FLAGSHIP_TOKEN_HEIGHT / 2}
+      width={FLAGSHIP_TOKEN_WIDTH}
+      height={FLAGSHIP_TOKEN_HEIGHT}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ pointerEvents: 'none' }}
+    />
+  );
+};
+
+const renderBlightToken = (
+  count: number,
+  anchor: ShipAnchor,
+  key: string
+) => {
+  return (
+    <g key={key} style={{ pointerEvents: 'none' }}>
+      <image
+        href={blightTokenImage}
+        x={anchor.x - BLIGHT_TOKEN_WIDTH / 2}
+        y={anchor.y - BLIGHT_TOKEN_HEIGHT / 2}
+        width={BLIGHT_TOKEN_WIDTH}
+        height={BLIGHT_TOKEN_HEIGHT}
+        preserveAspectRatio="xMidYMid meet"
+      />
+      <circle
+        cx={anchor.x + 10}
+        cy={anchor.y + 4}
+        r={9}
+        fill="rgba(0,0,0,0.92)"
+        stroke="white"
+        strokeWidth="2"
+      />
+      <text
+        x={anchor.x + 10}
+        y={anchor.y + 9}
+        textAnchor="middle"
+        fontSize="12"
+        fontWeight="700"
+        fill="white"
+      >
+        {count}
+      </text>
+    </g>
+  );
+};
+
+const getFlagshipColors = (
+  space: {
+    ships?: { color: ShipDisplayColor }[];
+    flagship?: boolean;
+    flagships?: FlagshipColor[];
+  }
+): FlagshipColor[] => {
+  if (Array.isArray(space.flagships)) {
+    return space.flagships;
+  }
+
+  if (!space.flagship) {
+    return [];
+  }
+
+  const shipColors = Array.isArray(space.ships) ? space.ships : [];
+  const uniqueColors = Array.from(
+    new Set(
+      shipColors
+        .map((ship) => ship.color)
+        .filter((color): color is FlagshipColor => color !== 'imperial')
+    )
+  );
+
+  return uniqueColors.slice(0, 4);
+};
+
+
 export default function BoardOverlay() {
   const map = useGameStore((state) => state.gameState.map);
   const selectGate = useGameStore((state) => state.selectGate);
@@ -523,6 +989,117 @@ export default function BoardOverlay() {
                 );
               });
             })}
+
+          {(['cluster1', 'cluster2', 'cluster3', 'cluster4', 'cluster5', 'cluster6'] as ClusterId[]).flatMap((clusterId) => {
+            const gate = map[clusterId].gate;
+            const anchors = gateShipAnchors[clusterId] ?? [];
+            const counts = getShipCounts(gate.ships as { color: ShipDisplayColor }[]);
+
+            return counts.map(({ color, count }, index) => {
+              if (count === 0) return null;
+
+              const anchor = anchors[index];
+              if (!anchor) return null;
+
+              return renderShipCountToken(
+                color,
+                count,
+                anchor,
+                `gate-${clusterId}-${color}`
+              );
+            });
+          })}
+
+          {spaces
+            .filter((space): space is Extract<SpaceShape, { kind: 'planet' }> => space.kind === 'planet')
+            .flatMap((space) => {
+              const planet = map[space.clusterId][space.planetKey];
+              const anchors = planetShipAnchors[space.clusterId][space.planetKey] ?? [];
+              const counts = getShipCounts(planet.ships as { color: ShipDisplayColor }[]);
+
+              return counts.map(({ color, count }, index) => {
+                if (count === 0) return null;
+
+                const anchor = anchors[index];
+                if (!anchor) return null;
+
+                return renderShipCountToken(
+                  color,
+                  count,
+                  anchor,
+                  `${space.id}-${color}`
+                );
+              });
+            })}
+
+          {(['cluster1', 'cluster2', 'cluster3', 'cluster4', 'cluster5', 'cluster6'] as ClusterId[]).flatMap((clusterId) => {
+            const gate = map[clusterId].gate as {
+              ships?: { color: ShipDisplayColor }[];
+              flagship?: boolean;
+              flagships?: FlagshipColor[];
+            };
+            const anchors = gateFlagshipAnchors[clusterId] ?? [];
+            const colors = getFlagshipColors(gate);
+
+            return colors.map((color, index) => {
+              const anchor = anchors[index];
+              if (!anchor) return null;
+
+              return renderFlagshipToken(
+                color,
+                anchor,
+                `gate-${clusterId}-flagship-${color}`
+              );
+            });
+          })}
+
+          {spaces
+            .filter((space): space is Extract<SpaceShape, { kind: 'planet' }> => space.kind === 'planet')
+            .flatMap((space) => {
+              const planet = map[space.clusterId][space.planetKey] as {
+                ships?: { color: ShipDisplayColor }[];
+                flagship?: boolean;
+                flagships?: FlagshipColor[];
+              };
+              const anchors = planetFlagshipAnchors[space.clusterId][space.planetKey] ?? [];
+              const colors = getFlagshipColors(planet);
+
+              return colors.map((color, index) => {
+                const anchor = anchors[index];
+                if (!anchor) return null;
+
+                return renderFlagshipToken(
+                  color,
+                  anchor,
+                  `${space.id}-flagship-${color}`
+                );
+              });
+            })}
+
+          {(['cluster1', 'cluster2', 'cluster3', 'cluster4', 'cluster5', 'cluster6'] as ClusterId[]).map((clusterId) => {
+            const blight = map[clusterId].gate.blight ?? 0;
+            if (blight <= 0) return null;
+
+            return renderBlightToken(
+              blight,
+              gateBlightAnchors[clusterId],
+              `gate-${clusterId}-blight`
+            );
+          })}
+
+          {spaces
+            .filter((space): space is Extract<SpaceShape, { kind: 'planet' }> => space.kind === 'planet')
+            .map((space) => {
+              const blight = map[space.clusterId][space.planetKey].blight ?? 0;
+              if (blight <= 0) return null;
+
+              return renderBlightToken(
+                blight,
+                planetBlightAnchors[space.clusterId][space.planetKey],
+                `${space.id}-blight`
+              );
+            })}
+
         </svg>
       </div>
     </div>
