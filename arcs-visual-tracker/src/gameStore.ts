@@ -31,6 +31,123 @@ const applyInitiativeRules = (players: PlayerState[]): PlayerState[] => {
   return players;
 };
 
+const removeFlagshipColorFromMap = (map: GameState['map'], color: PlayerColor): GameState['map'] => ({
+  cluster1: {
+    ...map.cluster1,
+    gate: {
+      ...map.cluster1.gate,
+      flagships: map.cluster1.gate.flagships.filter((entry) => entry !== color),
+    },
+    planetTri: {
+      ...map.cluster1.planetTri,
+      flagships: map.cluster1.planetTri.flagships.filter((entry) => entry !== color),
+    },
+    planetMoon: {
+      ...map.cluster1.planetMoon,
+      flagships: map.cluster1.planetMoon.flagships.filter((entry) => entry !== color),
+    },
+    planetHex: {
+      ...map.cluster1.planetHex,
+      flagships: map.cluster1.planetHex.flagships.filter((entry) => entry !== color),
+    },
+  },
+  cluster2: {
+    ...map.cluster2,
+    gate: {
+      ...map.cluster2.gate,
+      flagships: map.cluster2.gate.flagships.filter((entry) => entry !== color),
+    },
+    planetTri: {
+      ...map.cluster2.planetTri,
+      flagships: map.cluster2.planetTri.flagships.filter((entry) => entry !== color),
+    },
+    planetMoon: {
+      ...map.cluster2.planetMoon,
+      flagships: map.cluster2.planetMoon.flagships.filter((entry) => entry !== color),
+    },
+    planetHex: {
+      ...map.cluster2.planetHex,
+      flagships: map.cluster2.planetHex.flagships.filter((entry) => entry !== color),
+    },
+  },
+  cluster3: {
+    ...map.cluster3,
+    gate: {
+      ...map.cluster3.gate,
+      flagships: map.cluster3.gate.flagships.filter((entry) => entry !== color),
+    },
+    planetTri: {
+      ...map.cluster3.planetTri,
+      flagships: map.cluster3.planetTri.flagships.filter((entry) => entry !== color),
+    },
+    planetMoon: {
+      ...map.cluster3.planetMoon,
+      flagships: map.cluster3.planetMoon.flagships.filter((entry) => entry !== color),
+    },
+    planetHex: {
+      ...map.cluster3.planetHex,
+      flagships: map.cluster3.planetHex.flagships.filter((entry) => entry !== color),
+    },
+  },
+  cluster4: {
+    ...map.cluster4,
+    gate: {
+      ...map.cluster4.gate,
+      flagships: map.cluster4.gate.flagships.filter((entry) => entry !== color),
+    },
+    planetTri: {
+      ...map.cluster4.planetTri,
+      flagships: map.cluster4.planetTri.flagships.filter((entry) => entry !== color),
+    },
+    planetMoon: {
+      ...map.cluster4.planetMoon,
+      flagships: map.cluster4.planetMoon.flagships.filter((entry) => entry !== color),
+    },
+    planetHex: {
+      ...map.cluster4.planetHex,
+      flagships: map.cluster4.planetHex.flagships.filter((entry) => entry !== color),
+    },
+  },
+  cluster5: {
+    ...map.cluster5,
+    gate: {
+      ...map.cluster5.gate,
+      flagships: map.cluster5.gate.flagships.filter((entry) => entry !== color),
+    },
+    planetTri: {
+      ...map.cluster5.planetTri,
+      flagships: map.cluster5.planetTri.flagships.filter((entry) => entry !== color),
+    },
+    planetMoon: {
+      ...map.cluster5.planetMoon,
+      flagships: map.cluster5.planetMoon.flagships.filter((entry) => entry !== color),
+    },
+    planetHex: {
+      ...map.cluster5.planetHex,
+      flagships: map.cluster5.planetHex.flagships.filter((entry) => entry !== color),
+    },
+  },
+  cluster6: {
+    ...map.cluster6,
+    gate: {
+      ...map.cluster6.gate,
+      flagships: map.cluster6.gate.flagships.filter((entry) => entry !== color),
+    },
+    planetTri: {
+      ...map.cluster6.planetTri,
+      flagships: map.cluster6.planetTri.flagships.filter((entry) => entry !== color),
+    },
+    planetMoon: {
+      ...map.cluster6.planetMoon,
+      flagships: map.cluster6.planetMoon.flagships.filter((entry) => entry !== color),
+    },
+    planetHex: {
+      ...map.cluster6.planetHex,
+      flagships: map.cluster6.planetHex.flagships.filter((entry) => entry !== color),
+    },
+  },
+});
+
 interface GameStore {
   gameState: GameState;
   selectedSpace:
@@ -215,23 +332,24 @@ export const useGameStore = create<GameStore>((set) => ({
       },
     })),
 
-  toggleGateFlagship: (clusterId, color) =>
+    toggleGateFlagship: (clusterId, color) =>
     set((state) => {
       const gate = state.gameState.map[clusterId].gate;
-      const hasFlagship = gate.flagships.includes(color);
+      const hasFlagshipInTarget = gate.flagships.includes(color);
+      const nextMap = removeFlagshipColorFromMap(state.gameState.map, color);
 
       return {
         gameState: {
           ...state.gameState,
           map: {
-            ...state.gameState.map,
+            ...nextMap,
             [clusterId]: {
-              ...state.gameState.map[clusterId],
+              ...nextMap[clusterId],
               gate: {
-                ...gate,
-                flagships: hasFlagship
-                  ? gate.flagships.filter((entry) => entry !== color)
-                  : [...gate.flagships, color],
+                ...nextMap[clusterId].gate,
+                flagships: hasFlagshipInTarget
+                  ? nextMap[clusterId].gate.flagships
+                  : [...nextMap[clusterId].gate.flagships, color],
               },
             },
           },
@@ -324,23 +442,24 @@ export const useGameStore = create<GameStore>((set) => ({
       },
     })),
 
-  togglePlanetFlagship: (clusterId, planetKey, color) =>
+    togglePlanetFlagship: (clusterId, planetKey, color) =>
     set((state) => {
       const planet = state.gameState.map[clusterId][planetKey];
-      const hasFlagship = planet.flagships.includes(color);
+      const hasFlagshipInTarget = planet.flagships.includes(color);
+      const nextMap = removeFlagshipColorFromMap(state.gameState.map, color);
 
       return {
         gameState: {
           ...state.gameState,
           map: {
-            ...state.gameState.map,
+            ...nextMap,
             [clusterId]: {
-              ...state.gameState.map[clusterId],
+              ...nextMap[clusterId],
               [planetKey]: {
-                ...planet,
-                flagships: hasFlagship
-                  ? planet.flagships.filter((entry) => entry !== color)
-                  : [...planet.flagships, color],
+                ...nextMap[clusterId][planetKey],
+                flagships: hasFlagshipInTarget
+                  ? nextMap[clusterId][planetKey].flagships
+                  : [...nextMap[clusterId][planetKey].flagships, color],
               },
             },
           },
