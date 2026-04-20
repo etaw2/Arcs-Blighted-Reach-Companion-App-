@@ -30,6 +30,8 @@ const applyInitiativeRules = (players: PlayerState[]): PlayerState[] => {
 
   return players;
 };
+const getClusterSeatNumber = (clusterId: ClusterId): number =>
+  Number(clusterId.replace('cluster', ''));
 
 const removeFlagshipColorFromMap = (map: GameState['map'], color: PlayerColor): GameState['map'] => ({
   cluster1: {
@@ -177,6 +179,12 @@ interface GameStore {
   setPlanetPortal: (clusterId: ClusterId, planetKey: PlanetKey, portal: boolean) => void;
   setPlanetBanner: (clusterId: ClusterId, planetKey: PlanetKey, banner: boolean) => void;
   setPlanetBroken: (clusterId: ClusterId, planetKey: PlanetKey, broken: boolean) => void;
+    setSeatOnBuilding: (
+    clusterId: ClusterId,
+    planetKey: PlanetKey,
+    buildingIndex: number,
+    seat: boolean
+  ) => void;
 
   addCourtCardToDeck: (card: CourtCard) => void;
   removeCourtCardFromDeck: (cardId: string) => void;
@@ -337,7 +345,8 @@ export const useGameStore = create<GameStore>((set) => ({
       const gate = state.gameState.map[clusterId].gate;
       const hasFlagshipInTarget = gate.flagships.includes(color);
       const nextMap = removeFlagshipColorFromMap(state.gameState.map, color);
-
+      const getClusterSeatNumber = (clusterId: ClusterId): number =>
+  Number(clusterId.replace('cluster', ''));
       return {
         gameState: {
           ...state.gameState,
@@ -467,30 +476,72 @@ export const useGameStore = create<GameStore>((set) => ({
       };
     }),
 
-  addBuildingToPlanet: (clusterId, planetKey, building) => {
+      addBuildingToPlanet: (clusterId, planetKey, building) => {
     let added = false;
-
     set((state) => {
       const planet = state.gameState.map[clusterId][planetKey];
+
+      if (planet.broken) {
+        return state;
+      }
 
       if (planet.buildings.length >= planet.buildingSpaces) {
         return state;
       }
 
-      if (building.color !== 'free') {
-        const owner = state.gameState.players.find((player) => player.color === building.color);
+      const updatedPlayers =
+        building.color === 'free'
+          ? state.gameState.players
+          : state.gameState.players.map((player) => {
+              if (player.color !== building.color) {
+                return player;
+              }
 
-        if (!owner) {
-          return state;
-        }
+              if (building.type === 'city') {
+                if (player.cities <= 0) {
+                  return player;
+                }
 
-        if (building.type === 'city' && owner.cities <= 0) {
-          return state;
-        }
+                return {
+                  ...player,
+                  cities: player.cities - 1,
+                };
+              }
 
-        if (building.type === 'starport' && owner.starports <= 0) {
-          return state;
-        }
+              if (building.type === 'starport') {
+                if (player.starports <= 0) {
+                  return player;
+                }
+
+                return {
+                  ...player,
+                  starports: player.starports - 1,
+                };
+              }
+
+              return player;
+            });
+
+      if (
+        building.color !== 'free' &&
+        updatedPlayers === state.gameState.players
+      ) {
+        return state;
+      }
+
+      const owningPlayer =
+        building.color === 'free'
+          ? null
+          : updatedPlayers.find((player) => player.color === building.color);
+
+      if (
+        building.color !== 'free' &&
+        ((building.type === 'city' && !owningPlayer) ||
+          (building.type === 'city' && owningPlayer.cities < 0) ||
+          (building.type === 'starport' && !owningPlayer) ||
+          (building.type === 'starport' && owningPlayer.starports < 0))
+      ) {
+        return state;
       }
 
       added = true;
@@ -498,6 +549,7 @@ export const useGameStore = create<GameStore>((set) => ({
       return {
         gameState: {
           ...state.gameState,
+          players: updatedPlayers,
           map: {
             ...state.gameState.map,
             [clusterId]: {
@@ -508,30 +560,9 @@ export const useGameStore = create<GameStore>((set) => ({
               },
             },
           },
-          players:
-            building.color === 'free'
-              ? state.gameState.players
-              : state.gameState.players.map((player) => {
-                  if (player.color !== building.color) {
-                    return player;
-                  }
-
-                  if (building.type === 'city') {
-                    return {
-                      ...player,
-                      cities: player.cities - 1,
-                    };
-                  }
-
-                  return {
-                    ...player,
-                    starports: player.starports - 1,
-                  };
-                }),
         },
       };
     });
-
     return added;
   },
 
@@ -646,22 +677,129 @@ export const useGameStore = create<GameStore>((set) => ({
       },
     })),
 
-  setPlanetBroken: (clusterId, planetKey, broken) =>
-    set((state) => ({
+    setPlanetBroken: (clusterId, planetKey, broken) => set((state) => {
+    const planet = state.gameState.map[clusterId][planetKey];
+    const removedBuildings = broken ? planet.buildings : [];
+
+    const updatedPlayers = broken
+      ? state.gameState.players.map((player) => {
+          let cityReturns = 0;
+          let starportReturns = 0;
+
+          removedBuildings.forEach((building) => {
+            if (building.color !== player.color) {
+              return;
+            }
+
+            if (building.type === 'city') {
+              cityReturns += 1;
+            } else if (building.type === 'starport') {
+              starportReturns += 1;
+            }
+          });
+
+          if (cityReturns === 0 && starportReturns === 0) {
+            return player;
+          }
+
+          return {
+            ...player,
+            cities: player.cities + cityReturns,
+            starports: player.starports + starportReturns,
+          };
+        })
+      : state.gameState.players;
+
+    return {
       gameState: {
         ...state.gameState,
+        players: updatedPlayers,
         map: {
           ...state.gameState.map,
           [clusterId]: {
             ...state.gameState.map[clusterId],
             [planetKey]: {
-              ...state.gameState.map[clusterId][planetKey],
+              ...planet,
               broken,
+              buildings: broken ? [] : planet.buildings,
             },
           },
         },
       },
-    })),
+    };
+  }),
+
+    setSeatOnBuilding: (clusterId, planetKey, buildingIndex, seat) =>
+    set((state) => {
+      const cluster = state.gameState.map[clusterId];
+      const targetPlanet = cluster[planetKey];
+      const targetBuilding = targetPlanet.buildings[buildingIndex];
+
+      if (!targetBuilding) {
+        return state;
+      }
+
+      if (targetBuilding.type !== 'city') {
+        return state;
+      }
+
+      const seatNumber = getClusterSeatNumber(clusterId);
+
+      const updatedCluster = {
+        ...cluster,
+        planetTri: {
+          ...cluster.planetTri,
+          buildings: cluster.planetTri.buildings.map((building) => ({
+            ...building,
+            seat: false,
+            seatNumber: null,
+          })),
+        },
+        planetMoon: {
+          ...cluster.planetMoon,
+          buildings: cluster.planetMoon.buildings.map((building) => ({
+            ...building,
+            seat: false,
+            seatNumber: null,
+          })),
+        },
+        planetHex: {
+          ...cluster.planetHex,
+          buildings: cluster.planetHex.buildings.map((building) => ({
+            ...building,
+            seat: false,
+            seatNumber: null,
+          })),
+        },
+      };
+
+      if (seat) {
+        updatedCluster[planetKey] = {
+          ...updatedCluster[planetKey],
+          buildings: updatedCluster[planetKey].buildings.map((building, index) => {
+            if (index !== buildingIndex) {
+              return building;
+            }
+
+            return {
+              ...building,
+              seat: true,
+              seatNumber,
+            };
+          }),
+        };
+      }
+
+      return {
+        gameState: {
+          ...state.gameState,
+          map: {
+            ...state.gameState.map,
+            [clusterId]: updatedCluster,
+          },
+        },
+      };
+    }),
 
   addCourtCardToDeck: (card) =>
     set((state) => ({

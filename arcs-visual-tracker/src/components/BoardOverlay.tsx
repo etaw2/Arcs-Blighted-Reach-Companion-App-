@@ -35,6 +35,17 @@ const flagshipTokenImages: Record<FlagshipColor, string> = {
 };
 
 const blightTokenImage = '/assets/arcs dev_punchboard blight front.png';
+const portalTokenImage = '/assets/portal.png';
+const bannerTokenImage = '/assets/banner.png';
+const brokenTokenImage = '/assets/broken.png';
+const seatTokenImages: Record<ClusterId, string> = {
+  cluster1: '/assets/seat1.png',
+  cluster2: '/assets/seat2.png',
+  cluster3: '/assets/seat3.png',
+  cluster4: '/assets/seat4.png',
+  cluster5: '/assets/seat5.png',
+  cluster6: '/assets/seat6.png',
+};
 
 type SpaceShape =
   | {
@@ -88,6 +99,16 @@ const FLAGSHIP_TOKEN_WIDTH = 74;
 const FLAGSHIP_TOKEN_HEIGHT = 74;
 const BLIGHT_TOKEN_WIDTH = 58;
 const BLIGHT_TOKEN_HEIGHT = 58;
+const PORTAL_TOKEN_WIDTH = 60;
+const PORTAL_TOKEN_HEIGHT = 60;
+const BANNER_TOKEN_WIDTH = 50;
+const BANNER_TOKEN_HEIGHT = 50;
+const BROKEN_TOKEN_WIDTH = 75;
+const BROKEN_TOKEN_HEIGHT = 75;
+const SEAT_TOKEN_WIDTH = 60;
+const SEAT_TOKEN_HEIGHT = 60;
+const SEAT_TOKEN_OFFSET_X = 0;
+const SEAT_TOKEN_OFFSET_Y = -40;
 
 const shipColorOrder = ['blue', 'red', 'yellow', 'white', 'imperial'] as const;
 type ShipDisplayColor = (typeof shipColorOrder)[number];
@@ -160,22 +181,22 @@ const planetBuildingAnchors: Record<ClusterId, Record<PlanetKey, TokenAnchor[]>>
 
 const gateFlagshipAnchors: Record<ClusterId, ShipAnchor[]> = {
   cluster1: [
-    { x: 938, y: 424 },
-    { x: 1000, y: 440 },
-    { x: 1062, y: 456 },
-    { x: 1124, y: 472 },
+    { x: 1000, y: 360 },
+    { x: 1050, y: 365 },
+    { x: 1100, y: 370 },
+    { x: 1150, y: 375 },
   ],
   cluster2: [
-    { x: 1320, y: 535 },
-    { x: 1368, y: 571 },
-    { x: 1416, y: 607 },
-    { x: 1464, y: 643 },
+    { x: 1250, y: 540 },
+    { x: 1300, y: 540 },
+    { x: 1350, y: 540 },
+    { x: 1300, y: 685 },
   ],
   cluster3: [
-    { x: 1378, y: 742 },
-    { x: 1334, y: 785 },
-    { x: 1290, y: 828 },
-    { x: 1246, y: 871 },
+    { x: 1245, y: 840 },
+    { x: 1200, y: 885 },
+    { x: 1290, y: 885 },
+    { x: 1245, y: 910 },
   ],
   cluster4: [
     { x: 1046, y: 956 },
@@ -184,16 +205,16 @@ const gateFlagshipAnchors: Record<ClusterId, ShipAnchor[]> = {
     { x: 866, y: 902 },
   ],
   cluster5: [
-    { x: 748, y: 780 },
-    { x: 714, y: 730 },
-    { x: 680, y: 680 },
-    { x: 646, y: 630 },
+    { x: 715, y: 705 },
+    { x: 725, y: 770 },
+    { x: 765, y: 710 },
+    { x: 774, y: 780 },
   ],
   cluster6: [
-    { x: 704, y: 546 },
-    { x: 744, y: 500 },
-    { x: 784, y: 454 },
-    { x: 824, y: 408 },
+    { x: 700, y: 596 },
+    { x: 742, y: 550 },
+    { x: 785, y: 490 },
+    { x: 785, y: 420 },
   ],
 };
 
@@ -202,7 +223,7 @@ const gateBlightAnchors: Record<ClusterId, ShipAnchor> = {
   cluster2: { x: 1280, y: 618 },
   cluster3: { x: 1304, y: 780 },
   cluster4: { x: 1095, y: 948 },
-  cluster5: { x: 795, y: 825 },
+  cluster5: { x: 760, y: 845 },
   cluster6: { x: 802, y: 560 },
 };
 
@@ -396,33 +417,33 @@ const planetShipAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor[]>> = {
 const planetFlagshipAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor[]>> = {
   cluster1: {
     planetTri: [{ x: 795, y: 38 }, { x: 850, y: 38 }, { x: 905, y: 38 }, { x: 960, y: 38 }],
-    planetMoon: [{ x: 1122, y: 166 }, { x: 1188, y: 166 }, { x: 1122, y: 236 }, { x: 1188, y: 236 }],
-    planetHex: [{ x: 1442, y: 116 }, { x: 1512, y: 180 }, { x: 1442, y: 248 }, { x: 1512, y: 312 }],
+    planetMoon: [{ x: 1060, y: 40 }, { x: 1115, y: 40 }, { x: 1060, y: 110 }, { x: 1115, y: 110 }],
+    planetHex: [{ x: 1575, y: 35 }, { x: 1630, y: 35 }, { x: 1685, y: 35 }, { x: 1740, y: 35 }],
   },
   cluster2: {
-    planetTri: [{ x: 1644, y: 356 }, { x: 1712, y: 356 }, { x: 1644, y: 430 }, { x: 1712, y: 430 }],
-    planetMoon: [{ x: 1816, y: 500 }, { x: 1884, y: 500 }, { x: 1816, y: 572 }, { x: 1884, y: 572 }],
-    planetHex: [{ x: 1728, y: 716 }, { x: 1796, y: 716 }, { x: 1728, y: 790 }, { x: 1796, y: 790 }],
+    planetTri: [{ x: 1900, y: 100 }, { x: 1970, y: 100 }, { x: 1900, y: 170 }, { x: 1970, y: 170 }],
+    planetMoon: [{ x: 1690, y: 470 }, { x: 1758, y: 470 }, { x: 1690, y: 542 }, { x: 1758, y: 542 },],
+    planetHex: [{ x: 1940, y: 660 }, { x: 2008, y: 660 }, { x: 1940, y: 734 }, { x: 2008, y: 734 },],
   },
   cluster3: {
-    planetTri: [{ x: 1714, y: 908 }, { x: 1782, y: 908 }, { x: 1714, y: 982 }, { x: 1782, y: 982 }],
-    planetMoon: [{ x: 1462, y: 1008 }, { x: 1530, y: 1008 }, { x: 1462, y: 1082 }, { x: 1530, y: 1082 }],
-    planetHex: [{ x: 1422, y: 1188 }, { x: 1490, y: 1188 }, { x: 1422, y: 1262 }, { x: 1490, y: 1262 }],
+    planetTri: [{ x: 1925, y: 890 }, { x: 1993, y: 890 }, { x: 1925, y: 964 }, { x: 1993, y: 964 }],
+    planetMoon: [{ x: 1680, y: 1030 }, { x: 1748, y: 1030 }, { x: 1680, y: 1104 }, { x: 1748, y: 1104 },],
+    planetHex: [{ x: 1620, y: 1275 }, { x: 1678, y: 1275 }, { x: 1620, y: 1349 }, { x: 1678, y: 1349 },],
   },
   cluster4: {
-    planetTri: [{ x: 1116, y: 1198 }, { x: 1184, y: 1198 }, { x: 1116, y: 1272 }, { x: 1184, y: 1272 }],
-    planetMoon: [{ x: 826, y: 1210 }, { x: 894, y: 1210 }, { x: 826, y: 1284 }, { x: 894, y: 1284 }],
-    planetHex: [{ x: 560, y: 1202 }, { x: 628, y: 1202 }, { x: 560, y: 1276 }, { x: 628, y: 1276 }],
+    planetTri: [{ x: 1116, y: 1278 }, { x: 1184, y: 1278 }, { x: 1116, y: 1350 }, { x: 1184, y: 1350 }],
+    planetMoon: [{ x: 725, y: 1350 }, { x: 780, y: 1350 }, { x: 835, y: 1350 }, { x: 890, y: 1350 }],
+    planetHex: [{ x: 445, y: 1260 }, { x: 510, y: 1260 }, { x: 445, y: 1345 }, { x: 510, y: 1345 }],
   },
   cluster5: {
-    planetTri: [{ x: 154, y: 1160 }, { x: 222, y: 1160 }, { x: 154, y: 1234 }, { x: 222, y: 1234 }],
-    planetMoon: [{ x: 286, y: 868 }, { x: 354, y: 868 }, { x: 286, y: 942 }, { x: 354, y: 942 }],
-    planetHex: [{ x: 90, y: 748 }, { x: 158, y: 748 }, { x: 90, y: 822 }, { x: 158, y: 822 }],
+    planetTri: [{ x: 40, y: 1155 }, { x: 108, y: 1155 }, { x: 40, y: 1229 }, { x: 108, y: 1229 },],
+    planetMoon: [{ x: 40, y: 868 }, { x: 108, y: 868 }, { x: 40, y: 942 }, { x: 108, y: 942 },],
+    planetHex: [{ x: 290, y: 675 }, { x: 345, y: 675 }, { x: 400, y: 675 }, { x: 455, y: 675 }],
   },
   cluster6: {
-    planetTri: [{ x: 292, y: 534 }, { x: 360, y: 534 }, { x: 292, y: 608 }, { x: 360, y: 608 }],
-    planetMoon: [{ x: 182, y: 300 }, { x: 250, y: 300 }, { x: 182, y: 374 }, { x: 250, y: 374 }],
-    planetHex: [{ x: 494, y: 170 }, { x: 562, y: 170 }, { x: 494, y: 244 }, { x: 562, y: 244 }],
+    planetTri: [{ x: 50, y: 400 }, { x: 118, y: 400 }, { x: 50, y: 474 }, { x: 118, y: 474 },],
+    planetMoon: [{ x: 40, y: 65 }, { x: 108, y: 65 }, { x: 40, y: 139 }, { x: 108, y: 139 },],
+    planetHex: [{ x: 400, y: 45 }, { x: 468, y: 45 }, { x: 400, y: 119 }, { x: 468, y: 119 },],
   },
 };
 
@@ -455,7 +476,106 @@ const planetBlightAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor>> = {
   cluster6: {
     planetTri: { x: 545, y: 575 },
     planetMoon: { x: 620, y: 440 },
-    planetHex: { x: 725, y: 348 },
+    planetHex: { x: 725, y: 350 },
+  },
+};
+
+const planetPortalAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor>> = {
+  cluster1: {
+    planetTri: { x: 715, y: 40 },
+    planetMoon: { x: 1330, y: 40 },
+    planetHex: { x: 1620, y: 120 },
+  },
+  cluster2: {
+    planetTri: { x: 1960, y: 260 },
+    planetMoon: { x: 2000, y: 365 },
+    planetHex: { x: 1990, y: 605 },
+  },
+  cluster3: {
+    planetTri: { x: 2010, y: 1035 },
+    planetMoon: { x: 2010, y: 1120 },
+    planetHex: { x: 1775, y: 1355 },
+  },
+  cluster4: {
+    planetTri: { x: 1340, y: 1355 },
+    planetMoon: { x: 770, y: 1280 },
+    planetHex: { x: 300, y: 1355 },
+  },
+  cluster5: {
+    planetTri: { x: 40, y: 1355 },
+    planetMoon: { x: 40, y: 1050 },
+    planetHex: { x: 35, y: 785 },
+  },
+  cluster6: {
+    planetTri: { x: 35, y: 342 },
+    planetMoon: { x: 35, y: 260 },
+    planetHex: { x: 280, y: 35 },
+  },
+};
+
+const planetBannerAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor>> = {
+  cluster1: {
+    planetTri: { x: 935, y: 210 },
+    planetMoon: { x: 1180, y: 220 },
+    planetHex: { x: 1420, y: 170 },
+  },
+  cluster2: {
+    planetTri: { x: 1565, y: 357 },
+    planetMoon: { x: 1800, y: 550 },
+    planetHex: { x: 1725, y: 748 },
+  },
+  cluster3: {
+    planetTri: { x: 1690, y: 915 },
+    planetMoon: { x: 1550, y: 1050 },
+    planetHex: { x: 1440, y: 1240 },
+  },
+  cluster4: {
+    planetTri: { x: 1185, y: 1250 },
+    planetMoon: { x: 950, y: 1225 },
+    planetHex: { x: 730, y: 1175 },
+  },
+  cluster5: {
+    planetTri: { x: 315, y: 1140 },
+    planetMoon: { x: 460, y: 870 },
+    planetHex: { x: 200, y: 750 },
+  },
+  cluster6: {
+    planetTri: { x: 435, y: 500 },
+    planetMoon: { x: 340, y: 300 },
+    planetHex: { x: 645, y: 215 },
+  },
+};
+
+const planetBrokenAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor>> = {
+  cluster1: {
+    planetTri: { x: 913, y: 150 },
+    planetMoon: { x: 1175, y: 154 },
+    planetHex: { x: 1465, y: 135 },
+  },
+  cluster2: {
+    planetTri: { x: 1638, y: 333 },
+    planetMoon: { x: 1872, y: 476 },
+    planetHex: { x: 1765, y: 715 },
+  },
+  cluster3: {
+    planetTri: { x: 1782, y: 885 },
+    planetMoon: { x: 1510, y: 983 },
+    planetHex: { x: 1530, y: 1245 },
+  },
+  cluster4: {
+    planetTri: { x: 1220, y: 1218 },
+    planetMoon: { x: 925, y: 1287 },
+    planetHex: { x: 649, y: 1193 },
+  },
+  cluster5: {
+    planetTri: { x: 229, y: 1156 },
+    planetMoon: { x: 372, y: 868 },
+    planetHex: { x: 155, y: 715 },
+  },
+  cluster6: {
+    planetTri: { x: 368.5, y: 533 },
+    planetMoon: { x: 298, y: 260 },
+    planetHex: { x: 568, y: 166 },
   },
 };
 
@@ -778,6 +898,76 @@ const renderBlightToken = (
   );
 };
 
+const renderPortalToken = (
+  anchor: ShipAnchor,
+  key: string
+) => {
+  return (
+    <image
+      key={key}
+      href={portalTokenImage}
+      x={anchor.x - PORTAL_TOKEN_WIDTH / 2}
+      y={anchor.y - PORTAL_TOKEN_HEIGHT / 2}
+      width={PORTAL_TOKEN_WIDTH}
+      height={PORTAL_TOKEN_HEIGHT}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ pointerEvents: 'none' }}
+    />
+  );
+};
+
+const renderBannerToken = (anchor: ShipAnchor, key: string) => {
+  return (
+    <image
+      key={key}
+      href={bannerTokenImage}
+      x={anchor.x - BANNER_TOKEN_WIDTH / 2}
+      y={anchor.y - BANNER_TOKEN_HEIGHT / 2}
+      width={BANNER_TOKEN_WIDTH}
+      height={BANNER_TOKEN_HEIGHT}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ pointerEvents: 'none' }}
+    />
+  );
+};
+
+const renderBrokenToken = (anchor: ShipAnchor, key: string) => {
+  return (
+    <image
+      key={key}
+      href={brokenTokenImage}
+      x={anchor.x - BROKEN_TOKEN_WIDTH / 2}
+      y={anchor.y - BROKEN_TOKEN_HEIGHT / 2}
+      width={BROKEN_TOKEN_WIDTH}
+      height={BROKEN_TOKEN_HEIGHT}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ pointerEvents: 'none' }}
+    />
+  );
+};
+
+const renderSeatToken = (
+  clusterId: ClusterId,
+  anchor: TokenAnchor,
+  key: string
+) => {
+  const x = anchor.x + SEAT_TOKEN_OFFSET_X;
+  const y = anchor.y + SEAT_TOKEN_OFFSET_Y;
+
+  return (
+    <image
+      key={key}
+      href={seatTokenImages[clusterId]}
+      x={x - SEAT_TOKEN_WIDTH / 2}
+      y={y - SEAT_TOKEN_HEIGHT / 2}
+      width={SEAT_TOKEN_WIDTH}
+      height={SEAT_TOKEN_HEIGHT}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ pointerEvents: 'none' }}
+    />
+  );
+};
+
 const getFlagshipColors = (
   space: {
     ships?: { color: ShipDisplayColor }[];
@@ -894,25 +1084,12 @@ export default function BoardOverlay() {
                 d="M 200 0 L 0 0 0 200"
                 fill="none"
                 stroke="rgba(255,255,255,0.18)"
-                strokeWidth="2"
+                strokeWidth="1.5"
               />
             </pattern>
           </defs>
 
-          <rect x="0" y="0" width="2048" height="1393" fill="url(#grid)" />
-
-          {Array.from({ length: 11 }).map((_, i) => (
-            <text key={`x-${i}`} x={i * 200 + 4} y={20} className="coord-axis-label">
-              {i * 200}
-            </text>
-          ))}
-
-          {Array.from({ length: 8 }).map((_, i) => (
-            <text key={`y-${i}`} x={4} y={i * 200 + 20} className="coord-axis-label">
-              {i * 200}
-            </text>
-          ))}
-
+          <rect width="2048" height="1393" fill="url(#grid)" className="coord-grid" />
           <line
             x1={mouseCoords.x}
             y1="0"
@@ -971,6 +1148,27 @@ export default function BoardOverlay() {
               />
             );
           })}
+
+          {spaces
+            .filter((space): space is Extract<SpaceShape, { kind: 'planet' }> => space.kind === 'planet')
+            .flatMap((space) => {
+              const planet = map[space.clusterId][space.planetKey];
+              const anchors = planetBuildingAnchors[space.clusterId][space.planetKey] ?? [];
+
+              return planet.buildings.map((building, index) => {
+                if (building.type !== 'city') return null;
+                if (!building.seat) return null;
+
+                const anchor = anchors[index];
+                if (!anchor) return null;
+
+                return renderSeatToken(
+                  space.clusterId,
+                  anchor,
+                  `${space.id}-seat-${index}`
+                );
+              });
+            })}
 
           {spaces
             .filter((space): space is Extract<SpaceShape, { kind: 'planet' }> => space.kind === 'planet')
@@ -1100,6 +1298,41 @@ export default function BoardOverlay() {
               );
             })}
 
+          {spaces
+            .filter((space): space is Extract<SpaceShape, { kind: 'planet' }> => space.kind === 'planet')
+            .map((space) => {
+              const planet = map[space.clusterId][space.planetKey];
+              if (!planet.portal) return null;
+
+              const anchor = planetPortalAnchors[space.clusterId][space.planetKey];
+              if (!anchor) return null;
+
+              return renderPortalToken(anchor, `${space.id}-portal`);
+            })}
+
+          {spaces
+            .filter((space): space is Extract<SpaceShape, { kind: 'planet' }> => space.kind === 'planet')
+            .map((space) => {
+              const planet = map[space.clusterId][space.planetKey];
+              if (!planet.banner) return null;
+
+              const anchor = planetBannerAnchors[space.clusterId][space.planetKey];
+              if (!anchor) return null;
+
+              return renderBannerToken(anchor, `${space.id}-banner`);
+            })}
+
+          {spaces
+            .filter((space): space is Extract<SpaceShape, { kind: 'planet' }> => space.kind === 'planet')
+            .map((space) => {
+              const planet = map[space.clusterId][space.planetKey];
+              if (!planet.broken) return null;
+
+              const anchor = planetBrokenAnchors[space.clusterId][space.planetKey];
+              if (!anchor) return null;
+
+              return renderBrokenToken(anchor, `${space.id}-broken`);
+            })}
         </svg>
       </div>
     </div>

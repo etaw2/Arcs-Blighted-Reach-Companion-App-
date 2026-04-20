@@ -22,6 +22,7 @@ export default function SelectedSpacePanel() {
   const setPlanetPortal = useGameStore((state) => state.setPlanetPortal);
   const setPlanetBanner = useGameStore((state) => state.setPlanetBanner);
   const setPlanetBroken = useGameStore((state) => state.setPlanetBroken);
+  const setSeatOnBuilding = useGameStore((state) => state.setSeatOnBuilding);
 
   const activeFlagshipColors: PlayerColor[] = players
     .filter((player) => player.flagship)
@@ -78,37 +79,38 @@ export default function SelectedSpacePanel() {
         </div>
 
         <div className="subsection">
-  <strong>Ships</strong>
-  <div className="stacked-counter-list">
-    {shipColors.map((color) => {
-      const count = gate.ships.filter((ship) => ship.color === color).length;
+          <strong>Ships</strong>
+          <div className="stacked-counter-list">
+            {shipColors.map((color) => {
+              const count = gate.ships.filter((ship) => ship.color === color).length;
 
-      return (
-        <div className="counter-row" key={color}>
-          <span>{color}: {count}</span>
-          <button
-            onClick={() => {
-              const indexToRemove = gate.ships.findIndex((ship) => ship.color === color);
-              if (indexToRemove !== -1) {
-                removeShipFromGate(selectedSpace.clusterId, indexToRemove);
-              }
-            }}
-          >
-            -
-          </button>
-          <button onClick={() => addShipToGate(selectedSpace.clusterId, color)}>
-            +
-          </button>
+              return (
+                <div className="counter-row" key={color}>
+                  <span>{color}: {count}</span>
+                  <button
+                    onClick={() => {
+                      const indexToRemove = gate.ships.findIndex((ship) => ship.color === color);
+                      if (indexToRemove !== -1) {
+                        removeShipFromGate(selectedSpace.clusterId, indexToRemove);
+                      }
+                    }}
+                  >
+                    -
+                  </button>
+                  <button onClick={() => addShipToGate(selectedSpace.clusterId, color)}>
+                    +
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      );
-    })}
-  </div>
-</div>
       </aside>
     );
   }
 
   const planet = map[selectedSpace.clusterId][selectedSpace.planetKey];
+  const seatNumber = Number(selectedSpace.clusterId.replace('cluster', ''));
 
   const addOwnedBuilding = (type: 'city' | 'starport', color: PlayerColor) => {
     const building: Building = {
@@ -198,73 +200,73 @@ export default function SelectedSpacePanel() {
       </div>
 
       <div className="subsection">
-  <strong>Ships</strong>
-  <div className="stacked-counter-list">
-    {shipColors.map((color) => {
-      const count = planet.ships.filter((ship) => ship.color === color).length;
+        <strong>Ships</strong>
+        <div className="stacked-counter-list">
+          {shipColors.map((color) => {
+            const count = planet.ships.filter((ship) => ship.color === color).length;
 
-      return (
-        <div className="counter-row" key={color}>
-          <span>{color}: {count}</span>
-          <button
-            onClick={() => {
-              const indexToRemove = planet.ships.findIndex((ship) => ship.color === color);
-              if (indexToRemove !== -1) {
-                removeShipFromPlanet(selectedSpace.clusterId, selectedSpace.planetKey, indexToRemove);
-              }
-            }}
-          >
-            -
-          </button>
-          <button
-            onClick={() => addShipToPlanet(selectedSpace.clusterId, selectedSpace.planetKey, color)}
-          >
-            +
-          </button>
+            return (
+              <div className="counter-row" key={color}>
+                <span>{color}: {count}</span>
+                <button
+                  onClick={() => {
+                    const indexToRemove = planet.ships.findIndex((ship) => ship.color === color);
+                    if (indexToRemove !== -1) {
+                      removeShipFromPlanet(selectedSpace.clusterId, selectedSpace.planetKey, indexToRemove);
+                    }
+                  }}
+                >
+                  -
+                </button>
+                <button
+                  onClick={() => addShipToPlanet(selectedSpace.clusterId, selectedSpace.planetKey, color)}
+                >
+                  +
+                </button>
+              </div>
+            );
+          })}
         </div>
-      );
-    })}
-  </div>
-</div>
+      </div>
 
       <div className="subsection">
-  <strong>Buildings ({planet.buildings.length}/{planet.buildingSpaces})</strong>
+        <strong>Buildings ({planet.buildings.length}/{planet.buildingSpaces})</strong>
 
-  <div style={{ marginBottom: '0.75rem' }}>
-    <strong>Add free building</strong>
-    <div className="chip-row">
-      <button onClick={() => addFreeBuilding('city')}>Add free city</button>
-      <button onClick={() => addFreeBuilding('starport')}>Add free starport</button>
-    </div>
-  </div>
+        <div style={{ marginBottom: '0.75rem' }}>
+          <strong>Add free building</strong>
+          <div className="chip-row">
+            <button onClick={() => addFreeBuilding('city')}>Add free city</button>
+            <button onClick={() => addFreeBuilding('starport')}>Add free starport</button>
+          </div>
+        </div>
 
-  <div style={{ marginBottom: '0.75rem' }}>
-    <strong>Add city from player supply</strong>
-    <div className="chip-row">
-      {playerColors.map((color) => (
-        <button
-          key={`city-${color}`}
-          onClick={() => addOwnedBuilding('city', color)}
-        >
-          {color}
-        </button>
-      ))}
-    </div>
-  </div>
+        <div style={{ marginBottom: '0.75rem' }}>
+          <strong>Add city from player supply</strong>
+          <div className="chip-row">
+            {playerColors.map((color) => (
+              <button
+                key={`city-${color}`}
+                onClick={() => addOwnedBuilding('city', color)}
+              >
+                {color}
+              </button>
+            ))}
+          </div>
+        </div>
 
-  <div style={{ marginBottom: '0.75rem' }}>
-    <strong>Add starport from player supply</strong>
-    <div className="chip-row">
-      {playerColors.map((color) => (
-        <button
-          key={`starport-${color}`}
-          onClick={() => addOwnedBuilding('starport', color)}
-        >
-          {color}
-        </button>
-      ))}
-    </div>
-  </div>
+        <div style={{ marginBottom: '0.75rem' }}>
+          <strong>Add starport from player supply</strong>
+          <div className="chip-row">
+            {playerColors.map((color) => (
+              <button
+                key={`starport-${color}`}
+                onClick={() => addOwnedBuilding('starport', color)}
+              >
+                {color}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {planet.buildings.length === 0 ? (
           <p>No buildings.</p>
@@ -273,10 +275,29 @@ export default function SelectedSpacePanel() {
             <div className="list-row" key={`${building.color}-${building.type}-${index}`}>
               <span>
                 {building.color} {building.type}
+                {building.seat ? ` · Seat ${building.seatNumber}` : ''}
               </span>
-              <button onClick={() => removeBuildingFromPlanet(selectedSpace.clusterId, selectedSpace.planetKey, index)}>
-                Remove
-              </button>
+
+              <div className="chip-row">
+                                {building.type === 'city' && building.color !== 'free' && (
+                  <button
+                    onClick={() =>
+                      setSeatOnBuilding(
+                        selectedSpace.clusterId,
+                        selectedSpace.planetKey,
+                        index,
+                        !building.seat
+                      )
+                    }
+                  >
+                    {building.seat ? `Remove Seat ${seatNumber}` : `Add Seat ${seatNumber}`}
+                  </button>
+                )}
+
+                <button onClick={() => removeBuildingFromPlanet(selectedSpace.clusterId, selectedSpace.planetKey, index)}>
+                  Remove
+                </button>
+              </div>
             </div>
           ))
         )}
