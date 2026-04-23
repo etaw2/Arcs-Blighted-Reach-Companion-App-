@@ -1,3 +1,12 @@
+import {
+  availablePlayerAreaCards,
+  initialActionDeck,
+  initialCourtCards,
+  initialEdictCards,
+  initialLawCards,
+  initialSummitCards,
+} from './CardData';
+
 export type SaveGameNumber = 1 | 2;
 
 export type PlayerColor = 'blue' | 'red' | 'yellow' | 'white';
@@ -8,6 +17,14 @@ export type BuildingType = 'city' | 'starport';
 export type BuildingColor = PlayerColor | 'free';
 export type CourtCardType = 'guild' | 'vox' | 'lore';
 export type RuleCardType = 'edict' | 'law' | 'summit';
+export type PlayerCardType = 'title' | 'ability';
+export type ActionCardType =
+  | 'mobilization'
+  | 'construction'
+  | 'administration'
+  | 'aggression'
+  | 'event'
+  | 'faithful';
 export type GolemType = 'warrior' | 'protector' | 'seeker' | 'harvester';
 
 export type ClusterId =
@@ -89,31 +106,37 @@ export interface MapState {
   cluster6: ClusterState;
 }
 
-export interface CourtCard {
+interface BaseCardWithImage {
+  name: string;
+  id: string;
+  image: string;
+}
+
+export interface CourtCard extends BaseCardWithImage {
   category: 'court';
   type: CourtCardType;
-  name: string;
-  id: string;
   number: number;
 }
 
-export interface RuleCard {
+export interface RuleCard extends BaseCardWithImage {
   category: 'rule';
   type: RuleCardType;
-  name: string;
-  id: string;
   number: number;
 }
 
-export interface PlayerCard {
+export interface PlayerCard extends BaseCardWithImage {
   category: 'player';
-  type: string;
-  name: string;
-  id: string;
+  type: PlayerCardType;
   number?: number;
 }
 
-export type GameCard = CourtCard | RuleCard | PlayerCard;
+export interface ActionCard extends BaseCardWithImage {
+  category: 'action';
+  type: ActionCardType;
+  number: number;
+}
+
+export type GameCard = CourtCard | RuleCard | PlayerCard | ActionCard;
 
 export interface CourtState {
   inDeck: CourtCard[];
@@ -127,6 +150,14 @@ export interface RulesState {
 
 export interface ScrapPileState {
   scrap: GameCard[];
+}
+
+export interface PlayerCardPoolState {
+  available: PlayerCard[];
+}
+
+export interface ActionDeckState {
+  inDeck: ActionCard[];
 }
 
 export interface Golem {
@@ -147,11 +178,38 @@ export interface ResourceInventory {
   golem: number;
 }
 
+export type Allegiance = 'regent' | 'outlaw';
+
+export interface FavorInventory {
+  blue: number;
+  red: number;
+  yellow: number;
+  white: number;
+}
+
+export interface GameSetup {
+  setupComplete: boolean;
+  playersInGame: PlayerColor[];
+  playersWithFlagships: PlayerColor[];
+  optionalTokens: {
+    pathfindersPortal: boolean;
+    hegemonsBanner: boolean;
+    caretakersGolems: boolean;
+    planetBreakersBroken: boolean;
+  };
+  optionalStructures: {
+    cloudCities: boolean;
+    gatePorts: boolean;
+    gateStations: boolean;
+  };
+}
+
 export interface PlayerState {
   color: PlayerColor;
   fate: string | null;
   power: number;
   initiative: boolean;
+  allegiance: Allegiance;
   outrage: ResourceType[];
   flagship: boolean;
   flagshipUpgrades: FlagshipUpgrade[];
@@ -160,28 +218,23 @@ export interface PlayerState {
   ships: number;
   cities: number;
   starports: number;
-  favors: number;
+  favors: FavorInventory;
   trophies: number;
   captives: number;
 }
 
-/**
- * This is the actual persistent campaign snapshot.
- * One saved file should represent either end of game 1 or end of game 2.
- */
 export interface GameState {
   gameNumber: SaveGameNumber;
   map: MapState;
   court: CourtState;
   rules: RulesState;
   scrapPile: ScrapPileState;
+  playerCardPool: PlayerCardPoolState;
+  actionDeck: ActionDeckState;
   players: PlayerState[];
+  gameSetup: GameSetup;
 }
 
-/**
- * Optional wrapper for export/import files.
- * This gives you versioning and a timestamp without changing the actual stored game state shape.
- */
 export interface GameSaveFile {
   version: 1;
   savedAt: string;
@@ -194,7 +247,6 @@ const createEmptyGate = (number: number): GateState => ({
   flagships: [],
   blight: 0,
 });
-
 
 const createPlanet = (
   id: PlanetId,
@@ -255,17 +307,42 @@ export const initialMapState: MapState = {
 };
 
 export const initialCourtState: CourtState = {
-  inDeck: [],
+  inDeck: [...initialCourtCards],
 };
 
 export const initialRulesState: RulesState = {
-  edicts: [],
-  laws: [],
-  summit: [],
+  edicts: [...initialEdictCards],
+  laws: [...initialLawCards],
+  summit: [...initialSummitCards],
 };
 
 export const initialScrapPileState: ScrapPileState = {
   scrap: [],
+};
+
+export const initialPlayerCardPoolState: PlayerCardPoolState = {
+  available: [...availablePlayerAreaCards],
+};
+
+export const initialActionDeckState: ActionDeckState = {
+  inDeck: [...initialActionDeck],
+};
+
+export const defaultGameSetup: GameSetup = {
+  setupComplete: false,
+  playersInGame: ['blue', 'red', 'yellow', 'white'],
+  playersWithFlagships: [],
+  optionalTokens: {
+    pathfindersPortal: false,
+    hegemonsBanner: false,
+    caretakersGolems: false,
+    planetBreakersBroken: false,
+  },
+  optionalStructures: {
+    cloudCities: false,
+    gatePorts: false,
+    gateStations: false,
+  },
 };
 
 export const initialGameState: GameState = {
@@ -274,7 +351,10 @@ export const initialGameState: GameState = {
   court: initialCourtState,
   rules: initialRulesState,
   scrapPile: initialScrapPileState,
+  playerCardPool: initialPlayerCardPoolState,
+  actionDeck: initialActionDeckState,
   players: [],
+  gameSetup: defaultGameSetup,
 };
 
 export const createEmptyPlayer = (color: PlayerColor): PlayerState => ({
@@ -282,6 +362,7 @@ export const createEmptyPlayer = (color: PlayerColor): PlayerState => ({
   fate: null,
   power: 0,
   initiative: false,
+  allegiance: 'regent',
   outrage: [],
   flagship: false,
   flagshipUpgrades: [],
@@ -297,7 +378,12 @@ export const createEmptyPlayer = (color: PlayerColor): PlayerState => ({
   ships: 15,
   cities: 5,
   starports: 5,
-  favors: 0,
+  favors: {
+    blue: 0,
+    red: 0,
+    yellow: 0,
+    white: 0,
+  },
   trophies: 0,
   captives: 0,
 });
@@ -315,7 +401,10 @@ export const createInitialGameState = (gameNumber: SaveGameNumber = 1): GameStat
   court: structuredClone(initialCourtState),
   rules: structuredClone(initialRulesState),
   scrapPile: structuredClone(initialScrapPileState),
+  playerCardPool: structuredClone(initialPlayerCardPoolState),
+  actionDeck: structuredClone(initialActionDeckState),
   players: createInitialPlayers(),
+  gameSetup: structuredClone(defaultGameSetup),
 });
 
 export const createGameSaveFile = (state: GameState): GameSaveFile => ({
@@ -325,8 +414,10 @@ export const createGameSaveFile = (state: GameState): GameSaveFile => ({
 });
 
 export const playerBoardImageByColor: Record<PlayerColor, string> = {
-  blue: '/assets/blue-player-board.jpeg',
-  red: '/assets/red-player-board.jpeg',
-  yellow: '/assets/yellow-player-board.jpeg',
-  white: '/assets/white-player-board.jpeg',
+  blue: '/assets/blue-player-board.png',
+  red: '/assets/red-player-board.png',
+  yellow: '/assets/yellow-player-board.png',
+  white: '/assets/white-player-board.png',
 };
+
+export const flagshipBoardImage = '/assets/FlagshipBoard.jpg';
