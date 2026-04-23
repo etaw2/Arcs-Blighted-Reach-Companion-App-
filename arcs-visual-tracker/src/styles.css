@@ -240,22 +240,46 @@ input {
 
 .resource-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
 }
 
 .resource-box {
-  border: 1px solid #383838;
-  border-radius: 12px;
-  padding: 0.55rem;
-  background: #202020;
+  padding: 4px;
+  min-width: 0;
+  font-size: 12px;
 }
 
-.resource-box div {
+.resource-box > div {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  margin-top: 0.35rem;
+  justify-content: center;
+  gap: 4px;
+}
+
+.resource-box button {
+  padding: 1px 5px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.resource-box strong {
+  min-width: 14px;
+  text-align: center;
+}
+.resource-icon {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 4px;
+}
+
+.resource-chip-icon {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  display: block;
 }
 
 .selected-chip {
@@ -399,4 +423,73 @@ input {
 .inline-controls option {
   background: #111;
   color: #f5f5f5;
+}
+
+.favor-icon {
+  width: 50px;
+  height: 50px;
+  min-width: 14px;
+  min-height: 14px;
+  max-width: 50px;
+  max-height: 50px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 3px;
+}
+
+.player-piece-icon {
+  width: 50px;
+  height: 50px;
+  min-width: 18px;
+  min-height: 18px;
+  max-width: 50px;
+  max-height: 50px;
+  object-fit: contain;
+  display: block;
+}
+.power-input {
+  width: 48px;
+  padding: 2px 4px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.initiative-icon {
+  width: 50px;
+  height: 50px;
+  min-width: 18px;
+  min-height: 18px;
+  max-width: 50px;
+  max-height: 50px;
+  object-fit: contain;
+  display: block;
+}
+.space-token-icon {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+.setup-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.setup-content {
+  background: #000;
+  color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 520px;
+  width: calc(100% - 32px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+.setup-section {
+  margin-bottom: 16px;
 }

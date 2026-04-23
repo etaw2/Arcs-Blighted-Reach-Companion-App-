@@ -4,6 +4,42 @@ import type { Building, PlayerColor, ShipColor } from '../gameState';
 const shipColors: ShipColor[] = ['blue', 'red', 'yellow', 'white', 'imperial'];
 const playerColors: PlayerColor[] = ['blue', 'red', 'yellow', 'white'];
 
+const shipImageByColor: Record<ShipColor, string> = {
+  blue: '/assets/arcs dev_player piece blue ship.png',
+  red: '/assets/arcs dev_player piece red ship.png',
+  yellow: '/assets/arcs dev_player piece yellow ship.png',
+  white: '/assets/arcs dev_player piece white ship.png',
+  imperial: '/assets/arcs dev_imperial ship.png',
+};
+
+const cityImageByColor: Record<PlayerColor | 'free', string> = {
+  free: '/assets/arcs dev_free city.png',
+  blue: '/assets/arcs dev_player piece blue city.png',
+  red: '/assets/arcs dev_player piece red city.png',
+  yellow: '/assets/arcs dev_player piece yellow city.png',
+  white: '/assets/arcs dev_player piece white city.png',
+};
+
+const starportImageByColor: Record<PlayerColor | 'free', string> = {
+  free: '/assets/arcs dev_free starport.png',
+  blue: '/assets/arcs dev_player piece blue starport.png',
+  red: '/assets/arcs dev_player piece red starport.png',
+  yellow: '/assets/arcs dev_player piece yellow starport.png',
+  white: '/assets/arcs dev_player piece white starport.png',
+};
+
+const flagshipImageByColor: Record<PlayerColor, string> = {
+  blue: '/assets/arcs dev_player piece blue flagship.png',
+  red: '/assets/arcs dev_player piece red flagship.png',
+  yellow: '/assets/arcs dev_player piece yellow flagship.png',
+  white: '/assets/arcs dev_player piece white flagship.png',
+};
+
+const blightImage = '/assets/arcs dev_punchboard blight front.png';
+const bannerImage = '/assets/banner.png';
+const brokenImage = '/assets/broken.png';
+const portalImage = '/assets/portal.png';
+
 export default function SelectedSpacePanel() {
   const selectedSpace = useGameStore((state) => state.selectedSpace);
   const map = useGameStore((state) => state.gameState.map);
@@ -50,7 +86,9 @@ export default function SelectedSpacePanel() {
         <p>{selectedSpace.clusterId}</p>
 
         <div className="counter-row">
-          <span>Blight: {gate.blight}</span>
+          <span>
+            <img className="space-token-icon" src={blightImage} alt="blight" /> {gate.blight}
+          </span>
           <button onClick={() => changeGateBlight(selectedSpace.clusterId, -1)}>-</button>
           <button onClick={() => changeGateBlight(selectedSpace.clusterId, 1)}>+</button>
         </div>
@@ -70,7 +108,11 @@ export default function SelectedSpacePanel() {
                     className={isHere ? 'selected-chip' : ''}
                     onClick={() => toggleGateFlagship(selectedSpace.clusterId, color)}
                   >
-                    {color}
+                    <img
+                      className="space-token-icon"
+                      src={flagshipImageByColor[color]}
+                      alt={`${color} flagship`}
+                    />
                   </button>
                 );
               })}
@@ -86,7 +128,14 @@ export default function SelectedSpacePanel() {
 
               return (
                 <div className="counter-row" key={color}>
-                  <span>{color}: {count}</span>
+                  <span>
+                    <img
+                      className="space-token-icon"
+                      src={shipImageByColor[color]}
+                      alt={`${color} ship`}
+                    />{' '}
+                    {count}
+                  </span>
                   <button
                     onClick={() => {
                       const indexToRemove = gate.ships.findIndex((ship) => ship.color === color);
@@ -144,7 +193,9 @@ export default function SelectedSpacePanel() {
       <p>{selectedSpace.clusterId} · {planet.slot} · {planet.resource}</p>
 
       <div className="counter-row">
-        <span>Blight: {planet.blight}</span>
+        <span>
+          <img className="space-token-icon" src={blightImage} alt="blight" /> {planet.blight}
+        </span>
         <button onClick={() => changePlanetBlight(selectedSpace.clusterId, selectedSpace.planetKey, -1)}>
           -
         </button>
@@ -170,7 +221,11 @@ export default function SelectedSpacePanel() {
                     togglePlanetFlagship(selectedSpace.clusterId, selectedSpace.planetKey, color)
                   }
                 >
-                  {color}
+                  <img
+                    className="space-token-icon"
+                    src={flagshipImageByColor[color]}
+                    alt={`${color} flagship`}
+                  />
                 </button>
               );
             })}
@@ -179,21 +234,30 @@ export default function SelectedSpacePanel() {
       </div>
 
       <div className="counter-row">
-        <span>Portal: {planet.portal ? 'Yes' : 'No'}</span>
+        <span>
+          <img className="space-token-icon" src={portalImage} alt="portal" />{' '}
+          {planet.portal ? 'Yes' : 'No'}
+        </span>
         <button onClick={() => setPlanetPortal(selectedSpace.clusterId, selectedSpace.planetKey, !planet.portal)}>
           Toggle
         </button>
       </div>
 
       <div className="counter-row">
-        <span>Banner: {planet.banner ? 'Yes' : 'No'}</span>
+        <span>
+          <img className="space-token-icon" src={bannerImage} alt="banner" />{' '}
+          {planet.banner ? 'Yes' : 'No'}
+        </span>
         <button onClick={() => setPlanetBanner(selectedSpace.clusterId, selectedSpace.planetKey, !planet.banner)}>
           Toggle
         </button>
       </div>
 
       <div className="counter-row">
-        <span>Broken: {planet.broken ? 'Yes' : 'No'}</span>
+        <span>
+          <img className="space-token-icon" src={brokenImage} alt="broken" />{' '}
+          {planet.broken ? 'Yes' : 'No'}
+        </span>
         <button onClick={() => setPlanetBroken(selectedSpace.clusterId, selectedSpace.planetKey, !planet.broken)}>
           Toggle
         </button>
@@ -207,7 +271,14 @@ export default function SelectedSpacePanel() {
 
             return (
               <div className="counter-row" key={color}>
-                <span>{color}: {count}</span>
+                <span>
+                  <img
+                    className="space-token-icon"
+                    src={shipImageByColor[color]}
+                    alt={`${color} ship`}
+                  />{' '}
+                  {count}
+                </span>
                 <button
                   onClick={() => {
                     const indexToRemove = planet.ships.findIndex((ship) => ship.color === color);
@@ -235,8 +306,20 @@ export default function SelectedSpacePanel() {
         <div style={{ marginBottom: '0.75rem' }}>
           <strong>Add free building</strong>
           <div className="chip-row">
-            <button onClick={() => addFreeBuilding('city')}>Add free city</button>
-            <button onClick={() => addFreeBuilding('starport')}>Add free starport</button>
+            <button onClick={() => addFreeBuilding('city')}>
+              <img
+                className="space-token-icon"
+                src={cityImageByColor.free}
+                alt="free city"
+              />
+            </button>
+            <button onClick={() => addFreeBuilding('starport')}>
+              <img
+                className="space-token-icon"
+                src={starportImageByColor.free}
+                alt="free starport"
+              />
+            </button>
           </div>
         </div>
 
@@ -248,7 +331,11 @@ export default function SelectedSpacePanel() {
                 key={`city-${color}`}
                 onClick={() => addOwnedBuilding('city', color)}
               >
-                {color}
+                <img
+                  className="space-token-icon"
+                  src={cityImageByColor[color]}
+                  alt={`${color} city`}
+                />
               </button>
             ))}
           </div>
@@ -262,7 +349,11 @@ export default function SelectedSpacePanel() {
                 key={`starport-${color}`}
                 onClick={() => addOwnedBuilding('starport', color)}
               >
-                {color}
+                <img
+                  className="space-token-icon"
+                  src={starportImageByColor[color]}
+                  alt={`${color} starport`}
+                />
               </button>
             ))}
           </div>
@@ -274,12 +365,20 @@ export default function SelectedSpacePanel() {
           planet.buildings.map((building, index) => (
             <div className="list-row" key={`${building.color}-${building.type}-${index}`}>
               <span>
-                {building.color} {building.type}
+                <img
+                  className="space-token-icon"
+                  src={
+                    building.type === 'city'
+                      ? cityImageByColor[building.color as PlayerColor | 'free']
+                      : starportImageByColor[building.color as PlayerColor | 'free']
+                  }
+                  alt={`${building.color} ${building.type}`}
+                />
                 {building.seat ? ` · Seat ${building.seatNumber}` : ''}
               </span>
 
               <div className="chip-row">
-                                {building.type === 'city' && building.color !== 'free' && (
+                {building.type === 'city' && building.color !== 'free' && (
                   <button
                     onClick={() =>
                       setSeatOnBuilding(
