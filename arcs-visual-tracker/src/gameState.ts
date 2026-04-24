@@ -25,7 +25,6 @@ export type ActionCardType =
   | 'aggression'
   | 'event'
   | 'faithful';
-export type GolemType = 'warrior' | 'protector' | 'seeker' | 'harvester';
 
 export type ClusterId =
   | 'cluster1'
@@ -57,6 +56,7 @@ export type PlanetId =
 
 export type PlanetKey = 'planetTri' | 'planetMoon' | 'planetHex';
 export type RuleCollection = 'edicts' | 'laws' | 'summit';
+export type GolemType = 'warrior' | 'seeker' | 'protector' | 'harvester';
 
 export interface Ship {
   color: ShipColor;
@@ -69,11 +69,19 @@ export interface Building {
   seatNumber: number | null;
 }
 
+export interface CloudCity {
+  color: PlayerColor;
+  seat: boolean;
+  seatNumber: number | null;
+}
+
 export interface GateState {
   number: number;
   ships: Ship[];
   flagships: PlayerColor[];
   blight: number;
+  port: Building | null;
+  station: Building | null;
 }
 
 export interface PlanetState {
@@ -85,6 +93,7 @@ export interface PlanetState {
   resource: ResourceType;
   buildingSpaces: 1 | 2;
   buildings: Building[];
+  cloudCity: CloudCity | null;
   portal: boolean;
   banner: boolean;
   broken: boolean;
@@ -160,10 +169,6 @@ export interface ActionDeckState {
   inDeck: ActionCard[];
 }
 
-export interface Golem {
-  type: GolemType;
-}
-
 export interface FlagshipUpgrade {
   id: string;
   name: string;
@@ -187,6 +192,13 @@ export interface FavorInventory {
   white: number;
 }
 
+export interface GolemInventory {
+  warrior: boolean;
+  seeker: boolean;
+  protector: boolean;
+  harvester: boolean;
+}
+
 export interface GameSetup {
   setupComplete: boolean;
   playersInGame: PlayerColor[];
@@ -196,6 +208,7 @@ export interface GameSetup {
     hegemonsBanner: boolean;
     caretakersGolems: boolean;
     planetBreakersBroken: boolean;
+    foundersSeatTokens: boolean;
   };
   optionalStructures: {
     cloudCities: boolean;
@@ -215,6 +228,7 @@ export interface PlayerState {
   flagshipUpgrades: FlagshipUpgrade[];
   cards: PlayerCard[];
   resources: ResourceInventory;
+  golems: GolemInventory;
   ships: number;
   cities: number;
   starports: number;
@@ -246,6 +260,8 @@ const createEmptyGate = (number: number): GateState => ({
   ships: [],
   flagships: [],
   blight: 0,
+  port: null,
+  station: null,
 });
 
 const createPlanet = (
@@ -262,6 +278,7 @@ const createPlanet = (
   resource,
   buildingSpaces,
   buildings: [],
+  cloudCity: null,
   portal: false,
   banner: false,
   broken: false,
@@ -337,6 +354,7 @@ export const defaultGameSetup: GameSetup = {
     hegemonsBanner: false,
     caretakersGolems: false,
     planetBreakersBroken: false,
+    foundersSeatTokens: false,
   },
   optionalStructures: {
     cloudCities: false,
@@ -374,6 +392,12 @@ export const createEmptyPlayer = (color: PlayerColor): PlayerState => ({
     relic: 0,
     psionic: 0,
     golem: 0,
+  },
+  golems: {
+    warrior: false,
+    seeker: false,
+    protector: false,
+    harvester: false,
   },
   ships: 15,
   cities: 5,

@@ -15,6 +15,48 @@ const EMPTY_RULE_CARDS: RuleCard[] = [];
 const EMPTY_ACTION_CARDS: ActionCard[] = [];
 const EMPTY_SCRAP_CARDS: GameCard[] = [];
 
+const COURT_GROUP_LABELS: Record<string, string> = {
+  cc: 'Base Court',
+  l: 'Base Lore Cards',
+  F1: 'Steward',
+  F2: 'Founder',
+  F3: 'Magnate',
+  F4: 'Advocate',
+  F5: 'Caretaker',
+  F6: 'Partisan',
+  F7: 'Admiral',
+  F8: 'Believer',
+  F9: 'Pathfinder',
+  F10: 'Hegemon',
+  F11: 'Planet Breaker',
+  F12: 'Pirate',
+  F13: 'Blight Speaker',
+  F14: 'Pacifist',
+  F15: 'Peacekeeper',
+  F16: 'Warden',
+};
+
+const COURT_GROUP_ORDER = [
+  'cc',
+  'l',
+  'F1',
+  'F2',
+  'F3',
+  'F4',
+  'F5',
+  'F6',
+  'F7',
+  'F8',
+  'F9',
+  'F10',
+  'F11',
+  'F12',
+  'F13',
+  'F14',
+  'F15',
+  'F16',
+];
+
 function sortById<T extends { id: string }>(cards: T[]): T[] {
   const parseId = (id: string) => {
     const [left, right] = id.split('-');
@@ -37,6 +79,43 @@ function sortById<T extends { id: string }>(cards: T[]): T[] {
 
     return aParsed.right - bParsed.right;
   });
+}
+
+function getCourtGroupKey(card: CourtCard) {
+  return card.id.split('-')[0];
+}
+
+function groupCourtCards(cards: CourtCard[]) {
+  return cards.reduce<Record<string, CourtCard[]>>((groups, card) => {
+    const groupKey = getCourtGroupKey(card);
+
+    if (!groups[groupKey]) {
+      groups[groupKey] = [];
+    }
+
+    groups[groupKey].push(card);
+    return groups;
+  }, {});
+}
+
+function getCardSearchText(card: GameCard) {
+  const searchableCard = card as GameCard & {
+    name?: string;
+    title?: string;
+    suit?: string;
+    type?: string;
+  };
+
+  return [
+    searchableCard.id,
+    searchableCard.name,
+    searchableCard.title,
+    searchableCard.suit,
+    searchableCard.type,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
 }
 
 function SectionToggle({
@@ -62,9 +141,18 @@ function CardGrid({ children }: { children: React.ReactNode }) {
         display: 'flex',
         flexWrap: 'wrap',
         gap: '0.9rem',
+        alignItems: 'flex-start',
       }}
     >
       {children}
+    </div>
+  );
+}
+
+function CardPicture({ card }: { card: GameCard }) {
+  return (
+    <div className="card-picture-only">
+      <GameCardView card={card} size="small" />
     </div>
   );
 }
@@ -129,6 +217,8 @@ export default function CardsPanel() {
   const [showActionDeck, setShowActionDeck] = useState(false);
   const [showScrapPile, setShowScrapPile] = useState(false);
 
+  const [availableCourtSearch, setAvailableCourtSearch] = useState('');
+
   const courtDeck = gameState.court?.inDeck ?? EMPTY_COURT_CARDS;
   const laws = gameState.rules?.laws ?? EMPTY_RULE_CARDS;
   const edicts = gameState.rules?.edicts ?? EMPTY_RULE_CARDS;
@@ -150,6 +240,32 @@ export default function CardsPanel() {
       ),
     [courtIds, scrappedIds]
   );
+
+  const filteredAvailableCourtCards = useMemo(() => {
+    const searchText = availableCourtSearch.trim().toLowerCase();
+
+    if (!searchText) {
+      return availableCourtCards;
+    }
+
+    return availableCourtCards.filter((card) => getCardSearchText(card).includes(searchText));
+  }, [availableCourtCards, availableCourtSearch]);
+
+  const availableCourtCardsByGroup = useMemo(
+    () => groupCourtCards(filteredAvailableCourtCards),
+    [filteredAvailableCourtCards]
+  );
+
+  const availableCourtGroupOrder = useMemo(() => {
+    const unknownGroups = Object.keys(availableCourtCardsByGroup)
+      .filter((groupKey) => !COURT_GROUP_ORDER.includes(groupKey))
+      .sort((a, b) => a.localeCompare(b));
+
+    return [
+      ...COURT_GROUP_ORDER.filter((groupKey) => availableCourtCardsByGroup[groupKey]),
+      ...unknownGroups,
+    ];
+  }, [availableCourtCardsByGroup]);
 
   const availableLawCards = useMemo(
     () =>
@@ -183,6 +299,39 @@ export default function CardsPanel() {
 
   return (
     <section className="main-layout" style={{ marginTop: '1rem' }}>
+      <style>
+  {`
+    .card-picture-only {
+      position: relative;
+      z-index: 1;
+      transition: transform 160ms ease, z-index 160ms ease, filter 160ms ease;
+      transform-origin: center center;
+      color: transparent !important;
+      font-size: 0 !important;
+      line-height: 0 !important;
+    }
+
+    .card-picture-only:hover {
+      transform: scale(2.15);
+      z-index: 9999;
+      filter: drop-shadow(0 0 14px rgba(0, 0, 0, 0.85));
+    }
+
+    .card-picture-only * {
+      color: transparent !important;
+      font-size: 0 !important;
+      line-height: 0 !important;
+    }
+
+    .card-picture-only img {
+      display: block !important;
+      color: initial !important;
+      font-size: initial !important;
+      line-height: initial !important;
+    }
+  `}
+</style>
+
       <aside className="panel">
         <h2>Available Cards</h2>
 
@@ -193,19 +342,55 @@ export default function CardsPanel() {
         />
         {showAvailableCourt && (
           <div className="subsection">
+            <input
+              value={availableCourtSearch}
+              onChange={(event) => setAvailableCourtSearch(event.target.value)}
+              placeholder="Search available court cards..."
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                marginBottom: '1rem',
+                padding: '0.55rem 0.7rem',
+                borderRadius: '0.4rem',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                background: 'rgba(0, 0, 0, 0.35)',
+                color: 'white',
+              }}
+            />
+
             {availableCourtCards.length === 0 ? (
               <p>No available court cards.</p>
+            ) : filteredAvailableCourtCards.length === 0 ? (
+              <p>No available court cards match that search.</p>
             ) : (
-              <CardGrid>
-                {availableCourtCards.map((card) => (
-                  <CardTile
-                    key={card.id}
-                    actions={<button onClick={() => addCourtCardToDeck(card)}>Add to Court</button>}
+              availableCourtGroupOrder.map((groupKey) => (
+                <div key={groupKey} style={{ marginBottom: '1.25rem' }}>
+                  <h3
+                    style={{
+                      marginBottom: '0.75rem',
+                      fontSize: '1.35rem',
+                      fontWeight: 700,
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
+                      paddingBottom: '0.35rem',
+                    }}
                   >
-                    <GameCardView card={card} size="small" />
-                  </CardTile>
-                ))}
-              </CardGrid>
+                    {COURT_GROUP_LABELS[groupKey] ?? groupKey}
+                  </h3>
+
+                  <CardGrid>
+                    {sortById(availableCourtCardsByGroup[groupKey]).map((card) => (
+                      <CardTile
+                        key={card.id}
+                        actions={
+                          <button onClick={() => addCourtCardToDeck(card)}>Add to Court</button>
+                        }
+                      >
+                        <CardPicture card={card} />
+                      </CardTile>
+                    ))}
+                  </CardGrid>
+                </div>
+              ))
             )}
           </div>
         )}
@@ -226,7 +411,7 @@ export default function CardsPanel() {
                     key={card.id}
                     actions={<button onClick={() => addRuleCard('laws', card)}>Add to Laws</button>}
                   >
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
@@ -252,7 +437,7 @@ export default function CardsPanel() {
                       <button onClick={() => addRuleCard('edicts', card)}>Add to Edicts</button>
                     }
                   >
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
@@ -278,7 +463,7 @@ export default function CardsPanel() {
                       <button onClick={() => addRuleCard('summit', card)}>Add to Summit</button>
                     }
                   >
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
@@ -304,7 +489,7 @@ export default function CardsPanel() {
                       <button onClick={() => addActionCardToDeck(card)}>Add to Action Deck</button>
                     }
                   >
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
@@ -337,7 +522,7 @@ export default function CardsPanel() {
                       </>
                     }
                   >
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
@@ -366,7 +551,7 @@ export default function CardsPanel() {
                       </>
                     }
                   >
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
@@ -395,7 +580,7 @@ export default function CardsPanel() {
                       </>
                     }
                   >
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
@@ -424,7 +609,7 @@ export default function CardsPanel() {
                       </>
                     }
                   >
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
@@ -457,7 +642,7 @@ export default function CardsPanel() {
                       </>
                     }
                   >
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
@@ -478,7 +663,7 @@ export default function CardsPanel() {
               <CardGrid>
                 {sortById(scrapPile).map((card) => (
                   <CardTile key={card.id}>
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>

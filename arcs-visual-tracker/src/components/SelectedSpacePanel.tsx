@@ -44,11 +44,15 @@ export default function SelectedSpacePanel() {
   const selectedSpace = useGameStore((state) => state.selectedSpace);
   const map = useGameStore((state) => state.gameState.map);
   const players = useGameStore((state) => state.gameState.players);
+  const gameSetup = useGameStore((state) => state.gameState.gameSetup);
   const clearSelection = useGameStore((state) => state.clearSelection);
   const addShipToGate = useGameStore((state) => state.addShipToGate);
   const removeShipFromGate = useGameStore((state) => state.removeShipFromGate);
   const changeGateBlight = useGameStore((state) => state.changeGateBlight);
   const toggleGateFlagship = useGameStore((state) => state.toggleGateFlagship);
+  const setGatePort = useGameStore((state) => state.setGatePort);
+  const setGateStation = useGameStore((state) => state.setGateStation);
+  const toggleGateStationSeat = useGameStore((state) => state.toggleGateStationSeat);
   const addShipToPlanet = useGameStore((state) => state.addShipToPlanet);
   const removeShipFromPlanet = useGameStore((state) => state.removeShipFromPlanet);
   const changePlanetBlight = useGameStore((state) => state.changePlanetBlight);
@@ -58,11 +62,11 @@ export default function SelectedSpacePanel() {
   const setPlanetPortal = useGameStore((state) => state.setPlanetPortal);
   const setPlanetBanner = useGameStore((state) => state.setPlanetBanner);
   const setPlanetBroken = useGameStore((state) => state.setPlanetBroken);
+  const setPlanetCloudCity = useGameStore((state) => state.setPlanetCloudCity);
+  const setSeatOnCloudCity = useGameStore((state) => state.setSeatOnCloudCity);
   const setSeatOnBuilding = useGameStore((state) => state.setSeatOnBuilding);
 
-  const activeFlagshipColors: PlayerColor[] = players
-    .filter((player) => player.flagship)
-    .map((player) => player.color);
+  const activeFlagshipColors: PlayerColor[] = gameSetup.playersWithFlagships;
 
   if (!selectedSpace) {
     return (
@@ -75,6 +79,7 @@ export default function SelectedSpacePanel() {
 
   if (selectedSpace.kind === 'gate') {
     const gate = map[selectedSpace.clusterId].gate;
+    const gateSeatNumber = Number(selectedSpace.clusterId.replace('cluster', ''));
 
     return (
       <aside className="panel">
@@ -93,11 +98,9 @@ export default function SelectedSpacePanel() {
           <button onClick={() => changeGateBlight(selectedSpace.clusterId, 1)}>+</button>
         </div>
 
-        <div className="subsection">
-          <strong>Flagships</strong>
-          {activeFlagshipColors.length === 0 ? (
-            <p>No active flagships.</p>
-          ) : (
+        {activeFlagshipColors.length > 0 && (
+          <div className="subsection">
+            <strong>Flagships</strong>
             <div className="chip-row">
               {activeFlagshipColors.map((color) => {
                 const isHere = gate.flagships.includes(color);
@@ -117,8 +120,102 @@ export default function SelectedSpacePanel() {
                 );
               })}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {gameSetup.optionalStructures.gatePorts && (
+          <div className="subsection">
+            <strong>Gate Port</strong>
+
+            {gate.port === null ? (
+              <>
+                <p>One starport may be placed on this gate.</p>
+                <div className="chip-row">
+                  {playerColors.map((color) => (
+                    <button
+                      key={`gate-port-${color}`}
+                      onClick={() => setGatePort(selectedSpace.clusterId, color)}
+                    >
+                      <img
+                        className="space-token-icon"
+                        src={starportImageByColor[color]}
+                        alt={`${color} gate port`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="list-row">
+                <span>
+                  <img
+                    className="space-token-icon"
+                    src={starportImageByColor[gate.port.color as PlayerColor]}
+                    alt={`${gate.port.color} gate port`}
+                  />
+                  Gate Port
+                </span>
+
+                <button onClick={() => setGatePort(selectedSpace.clusterId, null)}>
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {gameSetup.optionalStructures.gateStations && (
+          <div className="subsection">
+            <strong>Gate Station</strong>
+
+            {gate.station === null ? (
+              <>
+                <p>One city may be placed on this gate.</p>
+                <div className="chip-row">
+                  {playerColors.map((color) => (
+                    <button
+                      key={`gate-station-${color}`}
+                      onClick={() => setGateStation(selectedSpace.clusterId, color)}
+                    >
+                      <img
+                        className="space-token-icon"
+                        src={cityImageByColor[color]}
+                        alt={`${color} gate station`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="list-row">
+                <span>
+                  <img
+                    className="space-token-icon"
+                    src={cityImageByColor[gate.station.color as PlayerColor]}
+                    alt={`${gate.station.color} gate station`}
+                  />
+                  Gate Station{gate.station.seat ? ` · Seat ${gate.station.seatNumber}` : ''}
+                </span>
+
+                <div className="chip-row">
+                  <button
+                    onClick={() =>
+                      toggleGateStationSeat(selectedSpace.clusterId, !gate.station?.seat)
+                    }
+                  >
+                    {gate.station.seat
+                      ? `Remove Seat ${gateSeatNumber}`
+                      : `Add Seat ${gateSeatNumber}`}
+                  </button>
+
+                  <button onClick={() => setGateStation(selectedSpace.clusterId, null)}>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="subsection">
           <strong>Ships</strong>
@@ -204,11 +301,9 @@ export default function SelectedSpacePanel() {
         </button>
       </div>
 
-      <div className="subsection">
-        <strong>Flagships</strong>
-        {activeFlagshipColors.length === 0 ? (
-          <p>No active flagships.</p>
-        ) : (
+      {activeFlagshipColors.length > 0 && (
+        <div className="subsection">
+          <strong>Flagships</strong>
           <div className="chip-row">
             {activeFlagshipColors.map((color) => {
               const isHere = planet.flagships.includes(color);
@@ -230,38 +325,108 @@ export default function SelectedSpacePanel() {
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className="counter-row">
-        <span>
-          <img className="space-token-icon" src={portalImage} alt="portal" />{' '}
-          {planet.portal ? 'Yes' : 'No'}
-        </span>
-        <button onClick={() => setPlanetPortal(selectedSpace.clusterId, selectedSpace.planetKey, !planet.portal)}>
-          Toggle
-        </button>
-      </div>
+      {gameSetup.optionalTokens.pathfindersPortal && (
+        <div className="counter-row">
+          <span>
+            <img className="space-token-icon" src={portalImage} alt="portal" />{' '}
+            {planet.portal ? 'Yes' : 'No'}
+          </span>
+          <button onClick={() => setPlanetPortal(selectedSpace.clusterId, selectedSpace.planetKey, !planet.portal)}>
+            Toggle
+          </button>
+        </div>
+      )}
 
-      <div className="counter-row">
-        <span>
-          <img className="space-token-icon" src={bannerImage} alt="banner" />{' '}
-          {planet.banner ? 'Yes' : 'No'}
-        </span>
-        <button onClick={() => setPlanetBanner(selectedSpace.clusterId, selectedSpace.planetKey, !planet.banner)}>
-          Toggle
-        </button>
-      </div>
+      {gameSetup.optionalTokens.hegemonsBanner && (
+        <div className="counter-row">
+          <span>
+            <img className="space-token-icon" src={bannerImage} alt="banner" />{' '}
+            {planet.banner ? 'Yes' : 'No'}
+          </span>
+          <button onClick={() => setPlanetBanner(selectedSpace.clusterId, selectedSpace.planetKey, !planet.banner)}>
+            Toggle
+          </button>
+        </div>
+      )}
 
-      <div className="counter-row">
-        <span>
-          <img className="space-token-icon" src={brokenImage} alt="broken" />{' '}
-          {planet.broken ? 'Yes' : 'No'}
-        </span>
-        <button onClick={() => setPlanetBroken(selectedSpace.clusterId, selectedSpace.planetKey, !planet.broken)}>
-          Toggle
-        </button>
-      </div>
+      {gameSetup.optionalTokens.planetBreakersBroken && (
+        <div className="counter-row">
+          <span>
+            <img className="space-token-icon" src={brokenImage} alt="broken" />{' '}
+            {planet.broken ? 'Yes' : 'No'}
+          </span>
+          <button onClick={() => setPlanetBroken(selectedSpace.clusterId, selectedSpace.planetKey, !planet.broken)}>
+            Toggle
+          </button>
+        </div>
+      )}
+
+      {gameSetup.optionalStructures.cloudCities && (
+        <div className="subsection">
+          <strong>Cloud City</strong>
+
+          {planet.cloudCity === null ? (
+            <>
+              <p>One cloud city may be placed in this planet system.</p>
+              <div className="chip-row">
+                {playerColors.map((color) => (
+                  <button
+                    key={`cloud-city-${color}`}
+                    onClick={() =>
+                      setPlanetCloudCity(selectedSpace.clusterId, selectedSpace.planetKey, color)
+                    }
+                  >
+                    <img
+                      className="space-token-icon"
+                      src={cityImageByColor[color]}
+                      alt={`${color} cloud city`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="list-row">
+              <span>
+  <img
+    className="space-token-icon"
+    src={cityImageByColor[planet.cloudCity.color]}
+    alt={`${planet.cloudCity.color} cloud city`}
+  />
+</span>
+
+              <div className="chip-row">
+                {gameSetup.optionalTokens.foundersSeatTokens && (
+  <button
+    onClick={() =>
+      setSeatOnCloudCity(
+        selectedSpace.clusterId,
+        selectedSpace.planetKey,
+        !planet.cloudCity?.seat
+      )
+    }
+  >
+    {planet.cloudCity.seat
+      ? `Remove Seat ${seatNumber}`
+      : `Add Seat ${seatNumber}`}
+  </button>
+)}
+
+                <button
+                  onClick={() =>
+                    setPlanetCloudCity(selectedSpace.clusterId, selectedSpace.planetKey, null)
+                  }
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="subsection">
         <strong>Ships</strong>
@@ -374,11 +539,12 @@ export default function SelectedSpacePanel() {
                   }
                   alt={`${building.color} ${building.type}`}
                 />
-                {building.seat ? ` · Seat ${building.seatNumber}` : ''}
               </span>
 
               <div className="chip-row">
-                {building.type === 'city' && building.color !== 'free' && (
+                {gameSetup.optionalTokens.foundersSeatTokens &&
+  building.type === 'city' &&
+  building.color !== 'free' && (
                   <button
                     onClick={() =>
                       setSeatOnBuilding(

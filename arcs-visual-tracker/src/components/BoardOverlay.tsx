@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { useGameStore } from '../gameStore';
-import type { Building, ClusterId, PlanetKey } from '../gameState';
+import type { Building, ClusterId, PlanetKey, PlayerColor } from '../gameState';
 
 type FlagshipColor = 'blue' | 'red' | 'yellow' | 'white';
 
@@ -105,10 +105,17 @@ const BANNER_TOKEN_WIDTH = 50;
 const BANNER_TOKEN_HEIGHT = 50;
 const BROKEN_TOKEN_WIDTH = 75;
 const BROKEN_TOKEN_HEIGHT = 75;
+const CLOUD_CITY_TOKEN_WIDTH = 90;
+const CLOUD_CITY_TOKEN_HEIGHT = 90;
 const SEAT_TOKEN_WIDTH = 60;
 const SEAT_TOKEN_HEIGHT = 60;
 const SEAT_TOKEN_OFFSET_X = 0;
 const SEAT_TOKEN_OFFSET_Y = -40;
+
+const GATE_STATION_SEAT_TOKEN_WIDTH = 46;
+const GATE_STATION_SEAT_TOKEN_HEIGHT = 46;
+const GATE_STATION_SEAT_OFFSET_X = -17;
+const GATE_STATION_SEAT_OFFSET_Y = -42;
 
 const shipColorOrder = ['blue', 'red', 'yellow', 'white', 'imperial'] as const;
 type ShipDisplayColor = (typeof shipColorOrder)[number];
@@ -178,6 +185,38 @@ const planetBuildingAnchors: Record<ClusterId, Record<PlanetKey, TokenAnchor[]>>
   },
 };
 
+const planetCloudCityAnchors: Record<ClusterId, Record<PlanetKey, TokenAnchor>> = {
+  cluster1: {
+    planetTri: { x: 790, y: 115, rotation: 0 },
+    planetMoon: { x: 1250, y: 90, rotation: 0 },
+    planetHex: { x: 1445, y: 235, rotation: 0 },
+  },
+  cluster2: {
+    planetTri: { x: 1720, y: 260, rotation: 0 },
+    planetMoon: { x: 1950, y: 410, rotation: 0 },
+    planetHex: { x: 1820, y: 640, rotation: 0 },
+  },
+  cluster3: {
+    planetTri: { x: 1860, y: 840, rotation: 0 },
+    planetMoon: { x: 1600, y: 970, rotation: 0 },
+    planetHex: { x: 1420, y: 1125, rotation: 0 },
+  },
+  cluster4: {
+    planetTri: { x: 1255, y: 1335, rotation: 0 },
+    planetMoon: { x:850, y: 1160, rotation: 0 },
+    planetHex: { x: 580, y: 1125, rotation: 0 },
+  },
+  cluster5: {
+    planetTri: { x: 429, y: 1050, rotation: 0 },
+    planetMoon: { x: 280, y: 840, rotation: 0 },
+    planetHex: { x: 110, y: 640, rotation: 0 },
+  },
+  cluster6: {
+    planetTri: { x: 260, y: 450, rotation: 0 },
+    planetMoon: { x: 280, y: 160, rotation: 0 },
+    planetHex: { x: 568, y: 50, rotation: 0 },
+  },
+};
 
 const gateFlagshipAnchors: Record<ClusterId, ShipAnchor[]> = {
   cluster1: [
@@ -190,7 +229,7 @@ const gateFlagshipAnchors: Record<ClusterId, ShipAnchor[]> = {
     { x: 1250, y: 540 },
     { x: 1300, y: 540 },
     { x: 1350, y: 540 },
-    { x: 1300, y: 685 },
+    { x: 1295, y: 685 },
   ],
   cluster3: [
     { x: 1245, y: 840 },
@@ -219,12 +258,40 @@ const gateFlagshipAnchors: Record<ClusterId, ShipAnchor[]> = {
 };
 
 const gateBlightAnchors: Record<ClusterId, ShipAnchor> = {
-  cluster1: { x: 1172, y: 452 },
+  cluster1: { x: 1160, y: 452 },
   cluster2: { x: 1280, y: 618 },
   cluster3: { x: 1304, y: 780 },
   cluster4: { x: 1095, y: 948 },
   cluster5: { x: 760, y: 845 },
   cluster6: { x: 802, y: 560 },
+};
+
+
+const gateStructureAnchors: Record<ClusterId, { port: TokenAnchor; station: TokenAnchor }> = {
+  cluster1: {
+    port: { x: 1240, y: 410, rotation: 0 },
+    station: { x: 1240, y: 475, rotation: 0 },
+  },
+  cluster2: {
+    port: { x: 1360, y: 630, rotation: 0 },
+    station: { x: 1360, y: 690, rotation: 0 },
+  },
+  cluster3: {
+    port: { x: 1340, y: 845, rotation: 0 },
+    station: { x: 1283, y: 985, rotation: 0 },
+  },
+  cluster4: {
+    port: { x: 1105, y: 1055, rotation: 0 },
+    station: { x: 1155, y: 1035, rotation: 0 },
+  },
+  cluster5: {
+    port: { x: 832, y: 830, rotation: 0 },
+    station: { x: 732, y: 883, rotation: 0 },
+  },
+  cluster6: {
+    port: { x: 860, y: 505, rotation: 0 },
+    station: { x: 785, y: 630, rotation: 0 },
+  },
 };
 
 const gateShipAnchors: Record<ClusterId, ShipAnchor[]> = {
@@ -257,11 +324,11 @@ const gateShipAnchors: Record<ClusterId, ShipAnchor[]> = {
     { x: 815, y: 976 },
   ],
   cluster5: [
-    { x: 695, y: 845 },
-    { x: 680, y: 815 },
-    { x: 665, y: 780 },
-    { x: 665, y: 745 },
-    { x: 660, y: 714 },
+    { x: 690, y: 835 },
+    { x: 675, y: 805 },
+    { x: 665, y: 770 },
+    { x: 665, y: 735 },
+    { x: 660, y: 704 },
   ],
   cluster6: [
     { x: 655, y: 580 },
@@ -776,7 +843,8 @@ const spaces: SpaceShape[] = [
 const renderBuildingToken = (
   building: Building,
   anchor: TokenAnchor,
-  key: string
+  key: string,
+  tokenClassName = ''
 ) => {
   const href = buildingTokenImages[building.color][building.type];
   const rotation = anchor.rotation ?? 0;
@@ -784,6 +852,7 @@ const renderBuildingToken = (
   return (
     <image
       key={key}
+      className={`building-token ${tokenClassName}`}
       href={href}
       x={anchor.x - BUILDING_TOKEN_WIDTH / 2}
       y={anchor.y - BUILDING_TOKEN_HEIGHT / 2}
@@ -946,22 +1015,44 @@ const renderBrokenToken = (anchor: ShipAnchor, key: string) => {
   );
 };
 
+const renderCloudCityToken = (anchor: TokenAnchor, key: string, color: PlayerColor) => {
+  const rotation = anchor.rotation ?? 0;
+
+  return (
+    <image
+      key={key}
+      href={buildingTokenImages[color].city}
+      x={anchor.x - CLOUD_CITY_TOKEN_WIDTH / 2}
+      y={anchor.y - CLOUD_CITY_TOKEN_HEIGHT / 2}
+      width={CLOUD_CITY_TOKEN_WIDTH}
+      height={CLOUD_CITY_TOKEN_HEIGHT}
+      transform={`rotate(${rotation} ${anchor.x} ${anchor.y})`}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ pointerEvents: 'none' }}
+    />
+  );
+};
+
 const renderSeatToken = (
   clusterId: ClusterId,
   anchor: TokenAnchor,
-  key: string
+  key: string,
+  offsetX = SEAT_TOKEN_OFFSET_X,
+  offsetY = SEAT_TOKEN_OFFSET_Y,
+  width = SEAT_TOKEN_WIDTH,
+  height = SEAT_TOKEN_HEIGHT
 ) => {
-  const x = anchor.x + SEAT_TOKEN_OFFSET_X;
-  const y = anchor.y + SEAT_TOKEN_OFFSET_Y;
+  const x = anchor.x + offsetX;
+  const y = anchor.y + offsetY;
 
   return (
     <image
       key={key}
       href={seatTokenImages[clusterId]}
-      x={x - SEAT_TOKEN_WIDTH / 2}
-      y={y - SEAT_TOKEN_HEIGHT / 2}
-      width={SEAT_TOKEN_WIDTH}
-      height={SEAT_TOKEN_HEIGHT}
+      x={x - width / 2}
+      y={y - height / 2}
+      width={width}
+      height={height}
       preserveAspectRatio="xMidYMid meet"
       style={{ pointerEvents: 'none' }}
     />
@@ -998,38 +1089,12 @@ const getFlagshipColors = (
 
 export default function BoardOverlay() {
   const map = useGameStore((state) => state.gameState.map);
+  const gameSetup = useGameStore((state) => state.gameState.gameSetup);
   const selectGate = useGameStore((state) => state.selectGate);
   const selectPlanet = useGameStore((state) => state.selectPlanet);
   const selectedSpace = useGameStore((state) => state.selectedSpace);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const [mouseCoords, setMouseCoords] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [clickedPoints, setClickedPoints] = useState<string[]>([]);
-
-  const getSvgCoords = (clientX: number, clientY: number) => {
-    const svg = svgRef.current;
-    if (!svg) return { x: 0, y: 0 };
-
-    const rect = svg.getBoundingClientRect();
-    const x = ((clientX - rect.left) / rect.width) * 2048;
-    const y = ((clientY - rect.top) / rect.height) * 1393;
-
-    return {
-      x: Math.round(x),
-      y: Math.round(y),
-    };
-  };
-
-  const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
-    setMouseCoords(getSvgCoords(event.clientX, event.clientY));
-  };
-
-  const handleSvgClick = (event: React.MouseEvent<SVGSVGElement>) => {
-    const point = getSvgCoords(event.clientX, event.clientY);
-    const pointString = `${point.x},${point.y}`;
-    console.log(pointString);
-    setClickedPoints((prev) => [...prev, pointString]);
-  };
 
   const isActive = (space: SpaceShape) => {
     if (!selectedSpace) return false;
@@ -1050,64 +1115,14 @@ export default function BoardOverlay() {
       <div className="board-image-wrap">
         <img className="board-image" src="/assets/main-board.png" alt="Arcs main board" />
 
-        <div className="coord-panel">
-          <div><strong>Mouse:</strong> {mouseCoords.x}, {mouseCoords.y}</div>
-          <div><strong>Clicked:</strong></div>
-          <div className="coord-points">
-            {clickedPoints.length === 0 ? 'none yet' : clickedPoints.join(' ')}
-          </div>
-          <button type="button" onClick={() => setClickedPoints([])}>
-            Clear points
-          </button>
-        </div>
 
         <svg
           ref={svgRef}
           className="board-overlay"
           viewBox="0 0 2048 1393"
           preserveAspectRatio="none"
-          onMouseMove={handleMouseMove}
-          onClick={handleSvgClick}
         >
-          <defs>
-            <pattern id="smallGrid" width="100" height="100" patternUnits="userSpaceOnUse">
-              <path
-                d="M 100 0 L 0 0 0 100"
-                fill="none"
-                stroke="rgba(255,255,255,0.10)"
-                strokeWidth="1"
-              />
-            </pattern>
-            <pattern id="grid" width="200" height="200" patternUnits="userSpaceOnUse">
-              <rect width="200" height="200" fill="url(#smallGrid)" />
-              <path
-                d="M 200 0 L 0 0 0 200"
-                fill="none"
-                stroke="rgba(255,255,255,0.18)"
-                strokeWidth="1.5"
-              />
-            </pattern>
-          </defs>
 
-          <rect width="2048" height="1393" fill="url(#grid)" className="coord-grid" />
-          <line
-            x1={mouseCoords.x}
-            y1="0"
-            x2={mouseCoords.x}
-            y2="1393"
-            className="coord-crosshair"
-          />
-          <line
-            x1="0"
-            y1={mouseCoords.y}
-            x2="2048"
-            y2={mouseCoords.y}
-            className="coord-crosshair"
-          />
-          <circle cx={mouseCoords.x} cy={mouseCoords.y} r="6" className="coord-dot" />
-          <text x={mouseCoords.x + 12} y={mouseCoords.y - 12} className="coord-readout">
-            {mouseCoords.x},{mouseCoords.y}
-          </text>
 
           {spaces.map((space) => {
             const className = `board-space ${isActive(space) ? 'active' : ''}`;
@@ -1149,6 +1164,22 @@ export default function BoardOverlay() {
             );
           })}
 
+          {gameSetup.optionalStructures.cloudCities && spaces
+            .filter((space): space is Extract<SpaceShape, { kind: 'planet' }> => space.kind === 'planet')
+            .map((space) => {
+              const planet = map[space.clusterId][space.planetKey];
+              if (!planet.cloudCity?.seat) return null;
+
+              const anchor = planetCloudCityAnchors[space.clusterId][space.planetKey];
+              if (!anchor) return null;
+
+              return renderSeatToken(
+                space.clusterId,
+                anchor,
+                `${space.id}-cloud-city-seat`
+              );
+            })}
+
           {spaces
             .filter((space): space is Extract<SpaceShape, { kind: 'planet' }> => space.kind === 'planet')
             .flatMap((space) => {
@@ -1187,6 +1218,66 @@ export default function BoardOverlay() {
                 );
               });
             })}
+
+          {gameSetup.optionalStructures.cloudCities && spaces
+            .filter((space): space is Extract<SpaceShape, { kind: 'planet' }> => space.kind === 'planet')
+            .map((space) => {
+              const planet = map[space.clusterId][space.planetKey];
+              if (!planet.cloudCity) return null;
+
+              const anchor = planetCloudCityAnchors[space.clusterId][space.planetKey];
+              if (!anchor) return null;
+
+              return renderCloudCityToken(anchor, `${space.id}-cloud-city`, planet.cloudCity.color);
+            })}
+
+          {(['cluster1', 'cluster2', 'cluster3', 'cluster4', 'cluster5', 'cluster6'] as ClusterId[]).map((clusterId) => {
+  const gate = map[clusterId].gate;
+  const anchor = gateStructureAnchors[clusterId].station;
+
+  if (!gate.station?.seat) return null;
+
+  return renderSeatToken(
+    clusterId,
+    anchor,
+    `gate-${clusterId}-station-seat`,
+    GATE_STATION_SEAT_OFFSET_X,
+    GATE_STATION_SEAT_OFFSET_Y,
+    GATE_STATION_SEAT_TOKEN_WIDTH,
+    GATE_STATION_SEAT_TOKEN_HEIGHT
+  );
+})}
+
+          {(['cluster1', 'cluster2', 'cluster3', 'cluster4', 'cluster5', 'cluster6'] as ClusterId[]).flatMap((clusterId) => {
+            const gate = map[clusterId].gate;
+            const anchors = gateStructureAnchors[clusterId];
+            const renderedStructures = [];
+
+            if (gate.port) {
+              renderedStructures.push(
+                renderBuildingToken(
+                  gate.port,
+                  anchors.port,
+                  `gate-${clusterId}-port`,
+                  'gate-structure-token'
+                )
+              );
+            }
+
+            if (gate.station) {
+              renderedStructures.push(
+                renderBuildingToken(
+                  gate.station,
+                  anchors.station,
+                  `gate-${clusterId}-station`,
+                  'gate-structure-token'
+                )
+              );
+            }
+
+            return renderedStructures;
+          })}
+
 
           {(['cluster1', 'cluster2', 'cluster3', 'cluster4', 'cluster5', 'cluster6'] as ClusterId[]).flatMap((clusterId) => {
             const gate = map[clusterId].gate;

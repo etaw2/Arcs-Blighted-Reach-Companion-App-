@@ -35,7 +35,13 @@ export default function App() {
 
   const togglePlayer = (color: PlayerColor) => {
     setLocalSetup((prev) => {
-      const playersInGame = prev.playersInGame.includes(color)
+      const isRemoving = prev.playersInGame.includes(color);
+
+      if (isRemoving && prev.playersInGame.length <= 2) {
+        return prev;
+      }
+
+      const playersInGame = isRemoving
         ? prev.playersInGame.filter((c) => c !== color)
         : [...prev.playersInGame, color];
 
@@ -79,6 +85,10 @@ export default function App() {
   };
 
   const handleConfirmSetup = () => {
+    if (localSetup.playersInGame.length < 2) {
+      return;
+    }
+
     updateGameSetup({
       ...localSetup,
       setupComplete: true,
@@ -95,6 +105,7 @@ export default function App() {
 
             <div className="setup-section">
               <strong>Players in Game</strong>
+              <p>Choose at least 2 players.</p>
               <div className="chip-row">
                 {allPlayerColors.map((color) => (
                   <button
@@ -150,6 +161,14 @@ export default function App() {
                 >
                   Planet Breaker&apos;s Broken
                 </button>
+                <button
+                  className={
+                    localSetup.optionalTokens.foundersSeatTokens ? 'selected-chip' : ''
+                  }
+                  onClick={() => toggleToken('foundersSeatTokens')}
+                >
+                  Founder&apos;s Seat Tokens
+                </button>
               </div>
             </div>
 
@@ -177,7 +196,11 @@ export default function App() {
               </div>
             </div>
 
-            <button className="reset-button" onClick={handleConfirmSetup}>
+            <button
+              className="reset-button"
+              onClick={handleConfirmSetup}
+              disabled={localSetup.playersInGame.length < 2}
+            >
               Start Game
             </button>
           </div>
