@@ -309,12 +309,27 @@ export default function CardsPanel() {
   );
 
   return (
-    <section className="main-layout" style={{ marginTop: '1rem' }}>
+    <section
+      className="main-layout"
+      style={{
+        marginTop: '1rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem',
+        width: '100%',
+        maxWidth: 'none',
+        alignItems: 'stretch',
+      }}
+    >
       <style>
   {`
     .card-picture-only {
       position: relative;
       z-index: 1;
+      min-height: 10rem;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
       transition: transform 160ms ease, z-index 160ms ease, filter 160ms ease;
       transform-origin: center center;
       color: transparent !important;
@@ -350,6 +365,12 @@ export default function CardsPanel() {
       z-index: 2;
     }
 
+    .subsection {
+      width: 100%;
+      box-sizing: border-box;
+      position: relative;
+    }
+
     .card-tile-actions button {
       width: 100%;
       white-space: normal;
@@ -361,7 +382,16 @@ export default function CardsPanel() {
   `}
 </style>
 
-      <aside className="panel">
+      <aside
+        className="panel"
+        style={{
+          width: '100%',
+          maxWidth: 'none',
+          boxSizing: 'border-box',
+          alignSelf: 'stretch',
+          position: 'relative',
+        }}
+      >
         <h2>Available Cards</h2>
 
         <SectionToggle
@@ -620,7 +650,16 @@ availableActionCards.length === 0? (
         )}
       </aside>
 
-      <aside className="panel">
+      <aside
+        className="panel"
+        style={{
+          width: '100%',
+          maxWidth: 'none',
+          boxSizing: 'border-box',
+          alignSelf: 'stretch',
+          position: 'relative',
+        }}
+      >
         <h2>Placed Cards</h2>
 
         <SectionToggle
@@ -738,10 +777,6 @@ availableActionCards.length === 0? (
             )}
           </div>
         )}
-      </aside>
-
-      <aside className="panel">
-        <h2>Other Zones</h2>
 
         <SectionToggle
           title="Action Deck"
@@ -792,7 +827,9 @@ availableActionCards.length === 0? (
             )}
           </div>
         )}
+
       </aside>
+
     </section>
   );
 }
