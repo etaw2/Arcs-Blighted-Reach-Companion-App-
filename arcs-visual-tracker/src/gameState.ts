@@ -145,6 +145,7 @@ export interface ActionCard extends BaseCardWithImage {
   number: number;
 }
 
+export type PlayerBoardCard = CourtCard | PlayerCard;
 export type GameCard = CourtCard | RuleCard | PlayerCard | ActionCard;
 
 export interface CourtState {
@@ -248,7 +249,7 @@ export interface PlayerState {
   flagship: boolean;
   flagshipUpgrades: FlagshipUpgrade[];
   flagshipBoard: FlagshipBoardState;
-  cards: PlayerCard[];
+  cards: PlayerBoardCard[];
   resources: ResourceInventory;
   golems: GolemInventory;
   ships: number;

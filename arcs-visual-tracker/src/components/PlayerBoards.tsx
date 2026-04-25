@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGameStore } from '../gameStore';
 import { playSound } from '../utils/sound';
+import GameCardView from './GameCardView';
 import {
   flagshipBoardImage,
   flagshipUpgrades,
@@ -119,8 +120,9 @@ export default function PlayerBoards() {
   const gameSetup = useGameStore((state) => state.gameState.gameSetup);
   const updatePlayer = useGameStore((state) => state.updatePlayer);
   const updatePlayerResources = useGameStore((state) => state.updatePlayerResources);
+  const removePlayerCardFromPlayer = useGameStore((state) => state.removePlayerCardFromPlayer);
   const setInitiative = useGameStore((state) => state.setInitiative);
-    const placeFlagshipBoardBuilding = useGameStore(
+  const placeFlagshipBoardBuilding = useGameStore(
     (state) => state.placeFlagshipBoardBuilding
   );
   const removeFlagshipBoardBuilding = useGameStore(
@@ -137,7 +139,7 @@ export default function PlayerBoards() {
     white: '',
   });
 
-    const [selectedFlagshipBuilding, setSelectedFlagshipBuilding] = useState<
+  const [selectedFlagshipBuilding, setSelectedFlagshipBuilding] = useState<
     Partial<Record<PlayerColor, BuildingType>>
   >({});
 
@@ -161,28 +163,28 @@ export default function PlayerBoards() {
             const isTiedForHighest = hasTieForHighest && player.power === highestPower;
 
             const toggleOutrage = (resource: ResourceType) => {
-  const hasOutrage = player.outrage.includes(resource);
-  const next = hasOutrage
-    ? player.outrage.filter((item) => item !== resource)
-    : [...player.outrage, resource];
+              const hasOutrage = player.outrage.includes(resource);
+              const next = hasOutrage
+                ? player.outrage.filter((item) => item !== resource)
+                : [...player.outrage, resource];
 
-  playSound(hasOutrage ? 'cheer' : 'outrage');
+              playSound(hasOutrage ? 'cheer' : 'outrage');
 
-  updatePlayer(color, { outrage: next });
-};
+              updatePlayer(color, { outrage: next });
+            };
 
-           const changeResource = (resource: ResourceType, delta: number) => {
-  const current = player.resources[resource];
-  const next = Math.max(0, current + delta);
+            const changeResource = (resource: ResourceType, delta: number) => {
+              const current = player.resources[resource];
+              const next = Math.max(0, current + delta);
 
-  if (next === current) {
-    return;
-  }
+              if (next === current) {
+                return;
+              }
 
-  playSound(delta > 0 ? 'resources' : 'panelClose');
+              playSound(delta > 0 ? 'resources' : 'panelClose');
 
-  updatePlayerResources(color, { [resource]: next });
-};
+              updatePlayerResources(color, { [resource]: next });
+            };
 
             const changeFavor = (favorColor: PlayerColor, delta: number) => {
               const current = player.favors[favorColor];
@@ -202,34 +204,34 @@ export default function PlayerBoards() {
             };
 
             const toggleGolem = (golemType: GolemType) => {
-  const isTurningOn = !player.golems[golemType];
+              const isTurningOn = !player.golems[golemType];
 
-  if (!isTurningOn) {
-    playSound('tokenRemove');
+              if (!isTurningOn) {
+                playSound('tokenRemove');
 
-    updatePlayer(color, {
-      golems: {
-        ...player.golems,
-        [golemType]: false,
-      },
-    });
-    return;
-  }
+                updatePlayer(color, {
+                  golems: {
+                    ...player.golems,
+                    [golemType]: false,
+                  },
+                });
+                return;
+              }
 
-  playSound('golemAdd');
+              playSound('golemAdd');
 
-  activePlayerColors.forEach((otherColor) => {
-    const otherPlayer = players.find((p) => p.color === otherColor);
-    if (!otherPlayer) return;
+              activePlayerColors.forEach((otherColor) => {
+                const otherPlayer = players.find((p) => p.color === otherColor);
+                if (!otherPlayer) return;
 
-    updatePlayer(otherColor, {
-      golems: {
-        ...otherPlayer.golems,
-        [golemType]: otherColor === color,
-      },
-    });
-  });
-};
+                updatePlayer(otherColor, {
+                  golems: {
+                    ...otherPlayer.golems,
+                    [golemType]: otherColor === color,
+                  },
+                });
+              });
+            };
 
             return (
               <div key={color} className="player-card">
@@ -241,127 +243,127 @@ export default function PlayerBoards() {
                   alt={`${color} player board`}
                 />
 
-                               
-
                 <div className="player-controls">
-                   {gameSetup.playersWithFlagships.includes(color) && (
-                  <div
-                    style={{
-                      position: 'relative',
-                      width: '100%',
-                      display: 'inline-block',
-                    }}
-                  >
-                    <img
-                      className="player-board-image"
-                      src={flagshipBoardImage}
-                      alt="flagship board"
+                  {gameSetup.playersWithFlagships.includes(color) && (
+                    <div
                       style={{
-                        display: 'block',
+                        position: 'relative',
                         width: '100%',
-                        height: 'auto',
+                        display: 'inline-block',
                       }}
-                    />
+                    >
+                      <img
+                        className="player-board-image"
+                        src={flagshipBoardImage}
+                        alt="flagship board"
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          height: 'auto',
+                        }}
+                      />
 
-                    {flagshipBoardSlots.map((slot) => {
-                      const flagshipBoard = player.flagshipBoard;
-                      const upgradeState = flagshipBoard[slot.upgradeId];
-                      const placedBuilding = upgradeState[slot.slotType];
-                      const selectedBuilding = selectedFlagshipBuilding[color];
-                      const armorIsUnlocked =
-                        slot.slotType === 'upgrade' || Boolean(upgradeState.upgrade);
-                      const isSelectable =
-                        Boolean(selectedBuilding) && !placedBuilding && armorIsUnlocked;
+                      {flagshipBoardSlots.map((slot) => {
+                        const flagshipBoard = player.flagshipBoard;
+                        const upgradeState = flagshipBoard[slot.upgradeId];
+                        const placedBuilding = upgradeState[slot.slotType];
+                        const selectedBuilding = selectedFlagshipBuilding[color];
+                        const armorIsUnlocked =
+                          slot.slotType === 'upgrade' || Boolean(upgradeState.upgrade);
+                        const isSelectable =
+                          Boolean(selectedBuilding) && !placedBuilding && armorIsUnlocked;
 
-                      return (
-                        <button
-                          key={`${slot.upgradeId}-${slot.slotType}`}
-                          title={`${
-                            flagshipUpgrades.find((upgrade) => upgrade.id === slot.upgradeId)
-                              ?.name
-                          } ${slot.slotType}`}
-                          onClick={() => {
-                            if (placedBuilding) {
-                              removeFlagshipBoardBuilding(
+                        return (
+                          <button
+                            key={`${slot.upgradeId}-${slot.slotType}`}
+                            title={`${
+                              flagshipUpgrades.find((upgrade) => upgrade.id === slot.upgradeId)
+                                ?.name
+                            } ${slot.slotType}`}
+                            onClick={() => {
+                              if (placedBuilding) {
+                                removeFlagshipBoardBuilding(
+                                  color,
+                                  slot.upgradeId,
+                                  slot.slotType
+                                );
+                                return;
+                              }
+
+                              if (!selectedBuilding || !armorIsUnlocked) {
+                                return;
+                              }
+
+                              placeFlagshipBoardBuilding(
                                 color,
                                 slot.upgradeId,
-                                slot.slotType
+                                slot.slotType,
+                                selectedBuilding
                               );
-                              return;
-                            }
 
-                            if (!selectedBuilding || !armorIsUnlocked) {
-                              return;
-                            }
+                              setSelectedFlagshipBuilding((prev) => ({
+                                ...prev,
+                                [color]: undefined,
+                              }));
+                            }}
+                            style={{
+                              position: 'absolute',
+                              left: slot.left,
+                              top: `calc(${slot.top} + ${flagshipSlotVerticalOffset})`,
+                              transform: 'translate(-50%, -50%)',
+                              width: '9%',
+                              aspectRatio: '1 / 1',
+                              height: 'auto',
+                              border: 'none',
+                              background: 'transparent',
+                              padding: 0,
+                              cursor: placedBuilding || isSelectable ? 'pointer' : 'default',
+                              opacity: slot.slotType === 'armor' && !armorIsUnlocked ? 0.35 : 1,
+                            }}
+                          >
+                            {isSelectable && selectedBuilding && (
+                              <img
+                                src={
+                                  selectedBuilding === 'city'
+                                    ? cityImageByColor[color]
+                                    : starportImageByColor[color]
+                                }
+                                alt=""
+                                style={{
+                                  position: 'absolute',
+                                  inset: 0,
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'contain',
+                                  opacity: 0.45,
+                                  filter: 'brightness(2) drop-shadow(0 0 8px white) drop-shadow(0 0 14px white)',
+                                  pointerEvents: 'none',
+                                }}
+                              />
+                            )}
 
-                            placeFlagshipBoardBuilding(
-                              color,
-                              slot.upgradeId,
-                              slot.slotType,
-                              selectedBuilding
-                            );
+                            {placedBuilding && (
+                              <img
+                                className="space-token-icon"
+                                src={
+                                  placedBuilding.type === 'city'
+                                    ? cityImageByColor[color]
+                                    : starportImageByColor[color]
+                                }
+                                alt={`${color} ${placedBuilding.type}`}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'contain',
+                                }}
+                              />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                            setSelectedFlagshipBuilding((prev) => ({
-                              ...prev,
-                              [color]: undefined,
-                            }));
-                          }}
-                          style={{
-                            position: 'absolute',
-                            left: slot.left,
-                            top: `calc(${slot.top} + ${flagshipSlotVerticalOffset})`,
-                            transform: 'translate(-50%, -50%)',
-                            width: '9%',
-                            aspectRatio: '1 / 1',
-                            height: 'auto',
-                            border: 'none',
-                            background: 'transparent',
-                            padding: 0,
-                            cursor: placedBuilding || isSelectable ? 'pointer' : 'default',
-                            opacity: slot.slotType === 'armor' && !armorIsUnlocked ? 0.35 : 1,
-                          }}
-                        >
-                          {isSelectable && selectedBuilding && (
-  <img
-    src={
-      selectedBuilding === 'city'
-        ? cityImageByColor[color]
-        : starportImageByColor[color]
-    }
-    alt=""
-    style={{
-      position: 'absolute',
-      inset: 0,
-      width: '100%',
-      height: '100%',
-      objectFit: 'contain',
-      opacity: 0.45,
-      filter: 'brightness(2) drop-shadow(0 0 8px white) drop-shadow(0 0 14px white)',
-      pointerEvents: 'none',
-    }}
-  />
-)}
-                          {placedBuilding && (
-                            <img
-  className="space-token-icon"
-  src={
-    placedBuilding.type === 'city'
-      ? cityImageByColor[color]
-      : starportImageByColor[color]
-  }
-  alt={`${color} ${placedBuilding.type}`}
-  style={{
-    width: '100%',
-    height: '100%',
-    objectFit: 'contain',
-  }}
-/>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
                   {gameSetup.playersWithFlagships.includes(color) && (
                     <div className="subsection">
                       <strong>Add Flagship Upgrades</strong>
@@ -462,7 +464,7 @@ export default function PlayerBoards() {
                     )}
                   </div>
 
-                                    <div className="inline-controls grow">
+                  <div className="inline-controls grow">
                     <label>Fate</label>
                     <select
                       value={player.fate ?? ''}
@@ -510,6 +512,47 @@ export default function PlayerBoards() {
                           </div>
                         ))}
                     </div>
+                  </div>
+
+                  <div className="subsection">
+                    <strong>Player Cards</strong>
+                    {(player.cards ?? []).length === 0 ? (
+                      <p>No player cards.</p>
+                    ) : (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: '0.75rem',
+                          alignItems: 'flex-start',
+                          marginTop: '0.6rem',
+                        }}
+                      >
+                        {player.cards.map((card) => (
+                          <div
+                            key={card.id}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.35rem',
+                              width: '7.9rem',
+                            }}
+                          >
+                            <div className="card-picture-only">
+                              <GameCardView card={card} size="small" />
+                            </div>
+                            <button
+                              onClick={() => {
+                                playSound('cardMove');
+                                removePlayerCardFromPlayer(color, card.id);
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="subsection">
@@ -586,11 +629,11 @@ export default function PlayerBoards() {
                               <span>{resource}</span>
                             )}
                             <div>
-                              <button onClick={() => changeResource(resource as keyof typeof player.resources, -1)}>
+                              <button onClick={() => changeResource(resource as ResourceType, -1)}>
                                 -
                               </button>
                               <strong>{value}</strong>
-                              <button onClick={() => changeResource(resource as keyof typeof player.resources, 1)}>
+                              <button onClick={() => changeResource(resource as ResourceType, 1)}>
                                 +
                               </button>
                             </div>

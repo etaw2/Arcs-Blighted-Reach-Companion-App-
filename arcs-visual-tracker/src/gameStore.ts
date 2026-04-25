@@ -10,6 +10,7 @@ import {
   type GameSetup,
   type GameState,
   type PlanetKey,
+  type PlayerBoardCard,
   type PlayerCard,
   type PlayerColor,
   type PlayerState,
@@ -294,6 +295,8 @@ interface GameStore {
   addActionCardToDeck: (card: ActionCard) => void;
   removeActionCardFromDeck: (cardId: string) => void;
   scrapActionCard: (cardId: string) => void;
+  addPlayerCardToPlayer: (color: PlayerColor, card: PlayerBoardCard) => void;
+  removePlayerCardFromPlayer: (color: PlayerColor, cardId: string) => void;
 
   addPlayer: (player: PlayerState) => void;
   removePlayer: (color: PlayerColor) => void;
@@ -1509,6 +1512,81 @@ export const useGameStore = create<GameStore>((set) => ({
             ...state.gameState.scrapPile,
             scrap: [...state.gameState.scrapPile.scrap, card],
           },
+        },
+      };
+    }),
+
+  addPlayerCardToPlayer: (color, card) =>
+    set((state) => {
+      const owningPlayer = state.gameState.players.find((player) =>
+        (player.cards ?? []).some((playerCard) => playerCard.id === card.id)
+      );
+
+      if (owningPlayer) {
+        return state;
+      }
+
+      const playerCardPool = state.gameState.playerCardPool ?? { available: [] };
+
+      return {
+        gameState: {
+          ...state.gameState,
+          court: {
+            ...state.gameState.court,
+            inDeck: state.gameState.court.inDeck.filter((courtCard) => courtCard.id !== card.id),
+          },
+          playerCardPool: {
+            ...playerCardPool,
+            available: playerCardPool.available.filter(
+              (availableCard) => availableCard.id !== card.id
+            ),
+          },
+          players: state.gameState.players.map((player) =>
+            player.color === color
+              ? {
+                  ...player,
+                  cards: [...(player.cards ?? []), card],
+                }
+              : player
+          ),
+        },
+      };
+    }),
+
+  removePlayerCardFromPlayer: (color, cardId) =>
+    set((state) => {
+      const player = state.gameState.players.find((entry) => entry.color === color);
+      const card = player?.cards?.find((entry) => entry.id === cardId);
+
+      if (!player || !card) {
+        return state;
+      }
+
+      const playerCardPool = state.gameState.playerCardPool ?? { available: [] };
+      const isAlreadyAvailable = playerCardPool.available.some(
+        (availableCard) => availableCard.id === cardId
+      );
+
+      const nextAvailable =
+        card.category === 'player' && !isAlreadyAvailable
+          ? [...playerCardPool.available, card as PlayerCard]
+          : playerCardPool.available;
+
+      return {
+        gameState: {
+          ...state.gameState,
+          playerCardPool: {
+            ...playerCardPool,
+            available: nextAvailable,
+          },
+          players: state.gameState.players.map((entry) =>
+            entry.color === color
+              ? {
+                  ...entry,
+                  cards: (entry.cards ?? []).filter((playerCard) => playerCard.id !== cardId),
+                }
+              : entry
+          ),
         },
       };
     }),
