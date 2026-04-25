@@ -9,6 +9,7 @@ import {
 } from '../CardData';
 import type { ActionCard, CourtCard, GameCard, RuleCard } from '../gameState';
 import GameCardView from './GameCardView';
+import { playSound } from '../utils/sound';
 
 const EMPTY_COURT_CARDS: CourtCard[] = [];
 const EMPTY_RULE_CARDS: RuleCard[] = [];
@@ -133,7 +134,14 @@ function SectionToggle({
 }) {
   return (
     <div style={{ marginBottom: '0.75rem' }}>
-      <button onClick={onToggle}>{isOpen ? `Hide ${title}` : `View ${title}`}</button>
+      <button
+        onClick={() => {
+          playSound(isOpen ? 'panelClose' : 'panelOpen');
+          onToggle();
+        }}
+      >
+        {isOpen ? `Hide ${title}` : `View ${title}`}
+      </button>
     </div>
   );
 }
@@ -462,7 +470,14 @@ availableActionCards.length === 0? (
                         <CardTile
                           key={card.id}
                           actions={
-                            <button onClick={() => addCourtCardToDeck(card)}>Add to Court</button>
+                            <button
+                              onClick={() => {
+                                playSound('cardMove');
+                                addCourtCardToDeck(card);
+                              }}
+                            >
+                              Add to Court
+                            </button>
                           }
                         >
                           <CardPicture card={card} />
@@ -495,7 +510,14 @@ availableActionCards.length === 0? (
                         .map((card) => (
                           <CardTile
                             key={card.id}
-                            actions={<button onClick={() => addRuleCard('laws', card)}>Add to Laws</button>}
+                            actions={<button
+                              onClick={() => {
+                                playSound('cardMove');
+                                addRuleCard('laws', card);
+                              }}
+                            >
+                              Add to Laws
+                            </button>}
                           >
                             <CardPicture card={card} />
                           </CardTile>
@@ -527,7 +549,14 @@ availableActionCards.length === 0? (
                         .map((card) => (
                           <CardTile
                             key={card.id}
-                            actions={<button onClick={() => addRuleCard('edicts', card)}>Add to Edicts</button>}
+                            actions={<button
+                              onClick={() => {
+                                playSound('cardMove');
+                                addRuleCard('edicts', card);
+                              }}
+                            >
+                              Add to Edicts
+                            </button>}
                           >
                             <CardPicture card={card} />
                           </CardTile>
@@ -559,7 +588,14 @@ availableActionCards.length === 0? (
                         .map((card) => (
                           <CardTile
                             key={card.id}
-                            actions={<button onClick={() => addRuleCard('summit', card)}>Add to Summit</button>}
+                            actions={<button
+                              onClick={() => {
+                                playSound('cardMove');
+                                addRuleCard('summit', card);
+                              }}
+                            >
+                              Add to Summit
+                            </button>}
                           >
                             <CardPicture card={card} />
                           </CardTile>
@@ -593,10 +629,20 @@ availableActionCards.length === 0? (
                             key={card.id}
                             actions={
                               <>
-                                <button onClick={() => addCourtCardToDeck(card as unknown as CourtCard)}>
+                                <button
+                                  onClick={() => {
+                                    playSound('cardMove');
+                                    addCourtCardToDeck(card as unknown as CourtCard);
+                                  }}
+                                >
                                   Add to Court
                                 </button>
-                                <button onClick={() => addActionCardToDeck(card)}>
+                                <button
+                                  onClick={() => {
+                                    playSound('cardMove');
+                                    addActionCardToDeck(card);
+                                  }}
+                                >
                                   Add to Action Deck
                                 </button>
                               </>
@@ -633,7 +679,12 @@ availableActionCards.length === 0? (
                           <CardTile
                             key={card.id}
                             actions={
-                              <button onClick={() => addActionCardToDeck(card)}>
+                              <button
+                                onClick={() => {
+                                  playSound('cardMove');
+                                  addActionCardToDeck(card);
+                                }}
+                              >
                                 Add to Action Deck
                               </button>
                             }
@@ -678,8 +729,22 @@ availableActionCards.length === 0? (
                     key={card.id}
                     actions={
                       <>
-                        <button onClick={() => scrapCourtCard(card.id)}>Scrap</button>
-                        <button onClick={() => removeCourtCardFromDeck(card.id)}>Remove</button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            scrapCourtCard(card.id);
+                          }}
+                        >
+                          Scrap
+                        </button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            removeCourtCardFromDeck(card.id);
+                          }}
+                        >
+                          Remove
+                        </button>
                       </>
                     }
                   >
@@ -707,8 +772,22 @@ availableActionCards.length === 0? (
                     key={card.id}
                     actions={
                       <>
-                        <button onClick={() => scrapRuleCard('laws', card.id)}>Scrap</button>
-                        <button onClick={() => removeRuleCard('laws', card.id)}>Remove</button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            scrapRuleCard('laws', card.id);
+                          }}
+                        >
+                          Scrap
+                        </button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            removeRuleCard('laws', card.id);
+                          }}
+                        >
+                          Remove
+                        </button>
                       </>
                     }
                   >
@@ -736,8 +815,22 @@ availableActionCards.length === 0? (
                     key={card.id}
                     actions={
                       <>
-                        <button onClick={() => scrapRuleCard('edicts', card.id)}>Scrap</button>
-                        <button onClick={() => removeRuleCard('edicts', card.id)}>Remove</button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            scrapRuleCard('edicts', card.id);
+                          }}
+                        >
+                          Scrap
+                        </button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            removeRuleCard('edicts', card.id);
+                          }}
+                        >
+                          Remove
+                        </button>
                       </>
                     }
                   >
@@ -765,8 +858,22 @@ availableActionCards.length === 0? (
                     key={card.id}
                     actions={
                       <>
-                        <button onClick={() => scrapRuleCard('summit', card.id)}>Scrap</button>
-                        <button onClick={() => removeRuleCard('summit', card.id)}>Remove</button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            scrapRuleCard('summit', card.id);
+                          }}
+                        >
+                          Scrap
+                        </button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            removeRuleCard('summit', card.id);
+                          }}
+                        >
+                          Remove
+                        </button>
                       </>
                     }
                   >
@@ -794,8 +901,22 @@ availableActionCards.length === 0? (
                     key={card.id}
                     actions={
                       <>
-                        <button onClick={() => scrapActionCard(card.id)}>Scrap</button>
-                        <button onClick={() => removeActionCardFromDeck(card.id)}>Remove</button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            scrapActionCard(card.id);
+                          }}
+                        >
+                          Scrap
+                        </button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            removeActionCardFromDeck(card.id);
+                          }}
+                        >
+                          Remove
+                        </button>
                       </>
                     }
                   >

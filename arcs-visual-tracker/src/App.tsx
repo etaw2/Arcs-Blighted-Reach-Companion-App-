@@ -6,6 +6,7 @@ import SelectedSpacePanel from './components/SelectedSpacePanel';
 import { useGameStore } from './gameStore';
 import { createEmptyPlayer, type GameSetup, type PlayerColor } from './gameState';
 import { BackgroundMusic } from './components/BackgroundMusic';
+import { getSoundEffectsMuted, setSoundEffectsMuted } from './utils/sound';
 
 const allPlayerColors: PlayerColor[] = ['blue', 'red', 'yellow', 'white'];
 
@@ -18,6 +19,7 @@ export default function App() {
   const setSetupComplete = useGameStore((state) => state.setSetupComplete);
 
   const [localSetup, setLocalSetup] = useState<GameSetup>(gameSetup);
+  const [sfxMuted, setSfxMuted] = useState(getSoundEffectsMuted);
 
   useEffect(() => {
     if (players.length === 0) {
@@ -83,6 +85,13 @@ export default function App() {
         [key]: !prev.optionalStructures[key],
       },
     }));
+  };
+
+  const toggleSfxMuted = () => {
+    const nextMuted = !sfxMuted;
+
+    setSoundEffectsMuted(nextMuted);
+    setSfxMuted(nextMuted);
   };
 
   const handleConfirmSetup = () => {
@@ -215,8 +224,11 @@ export default function App() {
             <p>Click the board spaces to edit gates and planets. Player boards are editable below.</p>
           </div>
           <div className="topbar-actions">
-                      <BackgroundMusic />
-          <button className="reset-button" onClick={resetGame}>Reset game</button>
+            <BackgroundMusic />
+            <button className="music-button" onClick={toggleSfxMuted}>
+  {sfxMuted ? 'Unmute SFX' : 'Mute SFX'}
+</button>
+            <button className="reset-button" onClick={resetGame}>Reset game</button>
           </div>
         </header>
 

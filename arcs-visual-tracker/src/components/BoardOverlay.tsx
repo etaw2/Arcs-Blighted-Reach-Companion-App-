@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { useGameStore } from '../gameStore';
+import { playSound } from '../utils/sound';
 import type { Building, ClusterId, PlanetKey, PlayerColor } from '../gameState';
 
 type FlagshipColor = 'blue' | 'red' | 'yellow' | 'white';
@@ -1133,15 +1134,19 @@ export default function BoardOverlay() {
                   key={space.id}
                   className={className}
                   d={space.d}
-                  onClick={(event) => {
-                    event.stopPropagation();
+                 onClick={(event) => {
+  event.stopPropagation();
 
-                    if (space.kind === 'gate') {
-                      selectGate(space.clusterId);
-                    } else {
-                      selectPlanet(space.clusterId, space.planetKey);
-                    }
-                  }}
+  if (!isActive(space)) {
+    playSound('panelOpen');
+  }
+
+  if (space.kind === 'gate') {
+    selectGate(space.clusterId);
+  } else {
+    selectPlanet(space.clusterId, space.planetKey);
+  }
+}}
                 />
               );
             }
@@ -1152,14 +1157,18 @@ export default function BoardOverlay() {
                 className={className}
                 points={space.points}
                 onClick={(event) => {
-                  event.stopPropagation();
+  event.stopPropagation();
 
-                  if (space.kind === 'gate') {
-                    selectGate(space.clusterId);
-                  } else {
-                    selectPlanet(space.clusterId, space.planetKey);
-                  }
-                }}
+  if (!isActive(space)) {
+    playSound('panelOpen');
+  }
+
+  if (space.kind === 'gate') {
+    selectGate(space.clusterId);
+  } else {
+    selectPlanet(space.clusterId, space.planetKey);
+  }
+}}
               />
             );
           })}

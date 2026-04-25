@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useGameStore } from '../gameStore';
+import { playSound } from '../utils/sound';
 import {
   flagshipBoardImage,
   flagshipUpgrades,
@@ -160,19 +161,38 @@ export default function PlayerBoards() {
             const isTiedForHighest = hasTieForHighest && player.power === highestPower;
 
             const toggleOutrage = (resource: ResourceType) => {
-              const next = player.outrage.includes(resource)
-                ? player.outrage.filter((r) => r !== resource)
-                : [...player.outrage, resource];
-              updatePlayer(color, { outrage: next });
-            };
+  const hasOutrage = player.outrage.includes(resource);
+  const next = hasOutrage
+    ? player.outrage.filter((item) => item !== resource)
+    : [...player.outrage, resource];
 
-            const changeResource = (resource: keyof typeof player.resources, delta: number) => {
-              const next = Math.max(0, player.resources[resource] + delta);
-              updatePlayerResources(color, { [resource]: next });
-            };
+  playSound(hasOutrage ? 'cheer' : 'outrage');
+
+  updatePlayer(color, { outrage: next });
+};
+
+           const changeResource = (resource: ResourceType, delta: number) => {
+  const current = player.resources[resource];
+  const next = Math.max(0, current + delta);
+
+  if (next === current) {
+    return;
+  }
+
+  playSound(delta > 0 ? 'resources' : 'panelClose');
+
+  updatePlayerResources(color, { [resource]: next });
+};
 
             const changeFavor = (favorColor: PlayerColor, delta: number) => {
-              const next = Math.max(0, player.favors[favorColor] + delta);
+              const current = player.favors[favorColor];
+              const next = Math.max(0, current + delta);
+
+              if (next === current) {
+                return;
+              }
+
+              playSound(delta > 0 ? 'panelOpen' : 'panelClose');
               updatePlayer(color, {
                 favors: {
                   ...player.favors,
@@ -182,30 +202,34 @@ export default function PlayerBoards() {
             };
 
             const toggleGolem = (golemType: GolemType) => {
-              const isTurningOn = !player.golems[golemType];
+  const isTurningOn = !player.golems[golemType];
 
-              if (!isTurningOn) {
-                updatePlayer(color, {
-                  golems: {
-                    ...player.golems,
-                    [golemType]: false,
-                  },
-                });
-                return;
-              }
+  if (!isTurningOn) {
+    playSound('tokenRemove');
 
-              activePlayerColors.forEach((otherColor) => {
-                const otherPlayer = players.find((p) => p.color === otherColor);
-                if (!otherPlayer) return;
+    updatePlayer(color, {
+      golems: {
+        ...player.golems,
+        [golemType]: false,
+      },
+    });
+    return;
+  }
 
-                updatePlayer(otherColor, {
-                  golems: {
-                    ...otherPlayer.golems,
-                    [golemType]: otherColor === color,
-                  },
-                });
-              });
-            };
+  playSound('golemAdd');
+
+  activePlayerColors.forEach((otherColor) => {
+    const otherPlayer = players.find((p) => p.color === otherColor);
+    if (!otherPlayer) return;
+
+    updatePlayer(otherColor, {
+      golems: {
+        ...otherPlayer.golems,
+        [golemType]: otherColor === color,
+      },
+    });
+  });
+};
 
             return (
               <div key={color} className="player-card">
@@ -493,13 +517,25 @@ export default function PlayerBoards() {
                     <div className="chip-row">
                       <button
                         className={player.allegiance === 'regent' ? 'selected-chip' : ''}
-                        onClick={() => updatePlayer(player.color, { allegiance: 'regent' })}
+                        onClick={() => {
+                          if (player.allegiance !== 'regent') {
+                            playSound('panelOpen');
+                          }
+
+                          updatePlayer(player.color, { allegiance: 'regent' });
+                        }}
                       >
                         Regent
                       </button>
                       <button
                         className={player.allegiance === 'outlaw' ? 'selected-chip' : ''}
-                        onClick={() => updatePlayer(player.color, { allegiance: 'outlaw' })}
+                        onClick={() => {
+                          if (player.allegiance !== 'outlaw') {
+                            playSound('panelOpen');
+                          }
+
+                          updatePlayer(player.color, { allegiance: 'outlaw' });
+                        }}
                       >
                         Outlaw
                       </button>
