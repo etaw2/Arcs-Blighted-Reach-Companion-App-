@@ -498,3 +498,51 @@ input {
   width: 50px;
   height: 50px;
 }
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+@font-face {
+  font-family: 'Cinzel-Black';
+  src: url('/assets/fonts/Cinzel-Black.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'JosefinSans';
+  src: url('/assets/fonts/JosefinSans-Regular.ttf') format('truetype');
+}
+
+body {
+  font-family: 'JosefineSans', sans-serif;
+}
+
+h1,
+h2,
+h3,
+.panel-title,
+.section-title {
+  font-family: 'Cinzel-Black', serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+body,
+button,
+input,
+select,
+textarea,
+.panel,
+.panel *,
+.setup-modal,
+.setup-modal * {
+  font-family: 'JosefinSans', sans-serif;
+}
+

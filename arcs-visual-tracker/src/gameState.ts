@@ -169,10 +169,31 @@ export interface ActionDeckState {
   inDeck: ActionCard[];
 }
 
+export type FlagshipUpgradeId =
+  | 'slipstreamDrive'
+  | 'tractorBeam'
+  | 'controlArray'
+  | 'defenseArray'
+  | 'shipCrane'
+  | 'hull';
+
+export type FlagshipBoardSlotType = 'upgrade' | 'armor';
+
 export interface FlagshipUpgrade {
-  id: string;
+  id: FlagshipUpgradeId;
   name: string;
 }
+
+export interface FlagshipBoardBuilding {
+  type: BuildingType;
+}
+
+export interface FlagshipBoardUpgradeState {
+  upgrade: FlagshipBoardBuilding | null;
+  armor: FlagshipBoardBuilding | null;
+}
+
+export type FlagshipBoardState = Record<FlagshipUpgradeId, FlagshipBoardUpgradeState>;
 
 export interface ResourceInventory {
   fuel: number;
@@ -226,6 +247,7 @@ export interface PlayerState {
   outrage: ResourceType[];
   flagship: boolean;
   flagshipUpgrades: FlagshipUpgrade[];
+  flagshipBoard: FlagshipBoardState;
   cards: PlayerCard[];
   resources: ResourceInventory;
   golems: GolemInventory;
@@ -345,6 +367,24 @@ export const initialActionDeckState: ActionDeckState = {
   inDeck: [...initialActionDeck],
 };
 
+export const flagshipUpgrades: FlagshipUpgrade[] = [
+  { id: 'slipstreamDrive', name: 'Slipstream Drive' },
+  { id: 'tractorBeam', name: 'Tractor Beam' },
+  { id: 'controlArray', name: 'Control Array' },
+  { id: 'defenseArray', name: 'Defense Array' },
+  { id: 'shipCrane', name: 'Ship Crane' },
+  { id: 'hull', name: 'Hull' },
+];
+
+export const createEmptyFlagshipBoard = (): FlagshipBoardState => ({
+  slipstreamDrive: { upgrade: null, armor: null },
+  tractorBeam: { upgrade: null, armor: null },
+  controlArray: { upgrade: null, armor: null },
+  defenseArray: { upgrade: null, armor: null },
+  shipCrane: { upgrade: null, armor: null },
+  hull: { upgrade: null, armor: null },
+});
+
 export const defaultGameSetup: GameSetup = {
   setupComplete: false,
   playersInGame: ['blue', 'red', 'yellow', 'white'],
@@ -382,8 +422,9 @@ export const createEmptyPlayer = (color: PlayerColor): PlayerState => ({
   initiative: false,
   allegiance: 'regent',
   outrage: [],
-  flagship: false,
-  flagshipUpgrades: [],
+    flagship: false,
+  flagshipUpgrades: flagshipUpgrades,
+  flagshipBoard: createEmptyFlagshipBoard(),
   cards: [],
   resources: {
     fuel: 0,

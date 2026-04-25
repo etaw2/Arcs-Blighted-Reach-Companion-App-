@@ -283,11 +283,12 @@ export default function SelectedSpacePanel() {
   return (
     <aside className="panel">
       <div className="panel-header">
-        <h2>{planet.id}</h2>
+        <h2>
+  Cluster {selectedSpace.clusterId.replace('cluster', '')} Planet{' '}
+  {planet.id.split('_')[1]}
+</h2>
         <button className="ghost-button" onClick={clearSelection}>Close</button>
       </div>
-
-      <p>{selectedSpace.clusterId} · {planet.slot} · {planet.resource}</p>
 
       <div className="counter-row">
         <span>
@@ -489,40 +490,44 @@ export default function SelectedSpacePanel() {
         </div>
 
         <div style={{ marginBottom: '0.75rem' }}>
-          <strong>Add city from player supply</strong>
-          <div className="chip-row">
-            {playerColors.map((color) => (
-              <button
-                key={`city-${color}`}
-                onClick={() => addOwnedBuilding('city', color)}
-              >
-                <img
-                  className="space-token-icon"
-                  src={cityImageByColor[color]}
-                  alt={`${color} city`}
-                />
-              </button>
-            ))}
-          </div>
-        </div>
+  <strong>Add city from player supply</strong>
+  <div className="chip-row">
+    {playerColors
+      .filter((color) => !activeFlagshipColors.includes(color))
+      .map((color) => (
+        <button
+          key={`city-${color}`}
+          onClick={() => addOwnedBuilding('city', color)}
+        >
+          <img
+            className="space-token-icon"
+            src={cityImageByColor[color]}
+            alt={`${color} city`}
+          />
+        </button>
+      ))}
+  </div>
+</div>
 
         <div style={{ marginBottom: '0.75rem' }}>
-          <strong>Add starport from player supply</strong>
-          <div className="chip-row">
-            {playerColors.map((color) => (
-              <button
-                key={`starport-${color}`}
-                onClick={() => addOwnedBuilding('starport', color)}
-              >
-                <img
-                  className="space-token-icon"
-                  src={starportImageByColor[color]}
-                  alt={`${color} starport`}
-                />
-              </button>
-            ))}
-          </div>
-        </div>
+  <strong>Add starport from player supply</strong>
+  <div className="chip-row">
+    {playerColors
+      .filter((color) => !activeFlagshipColors.includes(color))
+      .map((color) => (
+        <button
+          key={`starport-${color}`}
+          onClick={() => addOwnedBuilding('starport', color)}
+        >
+          <img
+            className="space-token-icon"
+            src={starportImageByColor[color]}
+            alt={`${color} starport`}
+          />
+        </button>
+      ))}
+  </div>
+</div>
 
         {planet.buildings.length === 0 ? (
           <p>No buildings.</p>

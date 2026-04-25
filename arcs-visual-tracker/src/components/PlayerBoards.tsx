@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { useGameStore } from '../gameStore';
 import {
   flagshipBoardImage,
+  flagshipUpgrades,
   playerBoardImageByColor,
+  type BuildingType,
+  type FlagshipBoardSlotType,
+  type FlagshipUpgradeId,
   type GolemType,
   type PlayerColor,
   type ResourceType,
@@ -11,6 +15,30 @@ import {
 const playerColors: PlayerColor[] = ['blue', 'red', 'yellow', 'white'];
 const outrageOptions: ResourceType[] = ['fuel', 'material', 'weapon', 'relic', 'psionic'];
 const golemTypes: GolemType[] = ['warrior', 'seeker', 'protector', 'harvester'];
+const flagshipBoardSlots: {
+  upgradeId: FlagshipUpgradeId;
+  slotType: FlagshipBoardSlotType;
+  left: string;
+  top: string;
+}[] = [
+  { upgradeId: 'slipstreamDrive', slotType: 'upgrade', left: '7.3%', top: '41%' },
+  { upgradeId: 'slipstreamDrive', slotType: 'armor', left: '7.31%', top: '15.5%' },
+
+  { upgradeId: 'tractorBeam', slotType: 'upgrade', left: '20.8%', top: '41%' },
+  { upgradeId: 'tractorBeam', slotType: 'armor', left: '20.8%', top: '15.5%' },
+
+  { upgradeId: 'controlArray', slotType: 'upgrade', left: '34.4%', top: '41%' },
+  { upgradeId: 'controlArray', slotType: 'armor', left: '34.4%', top: '15.5%' },
+
+  { upgradeId: 'defenseArray', slotType: 'upgrade', left: '65.5%', top: '41%' },
+  { upgradeId: 'defenseArray', slotType: 'armor', left: '65.5%', top: '15.5%' },
+
+  { upgradeId: 'shipCrane', slotType: 'upgrade', left: '79.01%', top: '41%' },
+  { upgradeId: 'shipCrane', slotType: 'armor', left: '79.01%', top: '15.5%' },
+
+  { upgradeId: 'hull', slotType: 'upgrade', left: '92.65%', top: '41%' },
+  { upgradeId: 'hull', slotType: 'armor', left: '92.65%', top: '15.5%' },
+];
 
 const resourceImageByType: Partial<Record<ResourceType, string>> = {
   fuel: '/assets/fuel.png',
@@ -91,6 +119,12 @@ export default function PlayerBoards() {
   const updatePlayer = useGameStore((state) => state.updatePlayer);
   const updatePlayerResources = useGameStore((state) => state.updatePlayerResources);
   const setInitiative = useGameStore((state) => state.setInitiative);
+    const placeFlagshipBoardBuilding = useGameStore(
+    (state) => state.placeFlagshipBoardBuilding
+  );
+  const removeFlagshipBoardBuilding = useGameStore(
+    (state) => state.removeFlagshipBoardBuilding
+  );
 
   const activePlayerColors = gameSetup.playersInGame;
   const activePlayers = players.filter((player) => activePlayerColors.includes(player.color));
@@ -102,10 +136,16 @@ export default function PlayerBoards() {
     white: '',
   });
 
+    const [selectedFlagshipBuilding, setSelectedFlagshipBuilding] = useState<
+    Partial<Record<PlayerColor, BuildingType>>
+  >({});
+
   const highestPower =
     activePlayers.length > 0 ? Math.max(...activePlayers.map((player) => player.power)) : 0;
   const highestPowerPlayers = activePlayers.filter((player) => player.power === highestPower);
   const hasTieForHighest = highestPower > 0 && highestPowerPlayers.length > 1;
+  const flagshipSlotVerticalOffset =
+    activePlayerColors.length === 2 ? '2%' : activePlayerColors.length === 3 ? '1.5%' : '0%';
 
   return (
     <section className="player-section">
@@ -177,15 +217,169 @@ export default function PlayerBoards() {
                   alt={`${color} player board`}
                 />
 
-                {gameSetup.playersWithFlagships.includes(color) && (
-                  <img
-                    className="player-board-image"
-                    src={flagshipBoardImage}
-                    alt="flagship board"
-                  />
-                )}
+                               
 
                 <div className="player-controls">
+                   {gameSetup.playersWithFlagships.includes(color) && (
+                  <div
+                    style={{
+                      position: 'relative',
+                      width: '100%',
+                      display: 'inline-block',
+                    }}
+                  >
+                    <img
+                      className="player-board-image"
+                      src={flagshipBoardImage}
+                      alt="flagship board"
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        height: 'auto',
+                      }}
+                    />
+
+                    {flagshipBoardSlots.map((slot) => {
+                      const flagshipBoard = player.flagshipBoard;
+                      const upgradeState = flagshipBoard[slot.upgradeId];
+                      const placedBuilding = upgradeState[slot.slotType];
+                      const selectedBuilding = selectedFlagshipBuilding[color];
+                      const armorIsUnlocked =
+                        slot.slotType === 'upgrade' || Boolean(upgradeState.upgrade);
+                      const isSelectable =
+                        Boolean(selectedBuilding) && !placedBuilding && armorIsUnlocked;
+
+                      return (
+                        <button
+                          key={`${slot.upgradeId}-${slot.slotType}`}
+                          title={`${
+                            flagshipUpgrades.find((upgrade) => upgrade.id === slot.upgradeId)
+                              ?.name
+                          } ${slot.slotType}`}
+                          onClick={() => {
+                            if (placedBuilding) {
+                              removeFlagshipBoardBuilding(
+                                color,
+                                slot.upgradeId,
+                                slot.slotType
+                              );
+                              return;
+                            }
+
+                            if (!selectedBuilding || !armorIsUnlocked) {
+                              return;
+                            }
+
+                            placeFlagshipBoardBuilding(
+                              color,
+                              slot.upgradeId,
+                              slot.slotType,
+                              selectedBuilding
+                            );
+
+                            setSelectedFlagshipBuilding((prev) => ({
+                              ...prev,
+                              [color]: undefined,
+                            }));
+                          }}
+                          style={{
+                            position: 'absolute',
+                            left: slot.left,
+                            top: `calc(${slot.top} + ${flagshipSlotVerticalOffset})`,
+                            transform: 'translate(-50%, -50%)',
+                            width: '9%',
+                            aspectRatio: '1 / 1',
+                            height: 'auto',
+                            border: 'none',
+                            background: 'transparent',
+                            padding: 0,
+                            cursor: placedBuilding || isSelectable ? 'pointer' : 'default',
+                            opacity: slot.slotType === 'armor' && !armorIsUnlocked ? 0.35 : 1,
+                          }}
+                        >
+                          {isSelectable && selectedBuilding && (
+  <img
+    src={
+      selectedBuilding === 'city'
+        ? cityImageByColor[color]
+        : starportImageByColor[color]
+    }
+    alt=""
+    style={{
+      position: 'absolute',
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      objectFit: 'contain',
+      opacity: 0.45,
+      filter: 'brightness(2) drop-shadow(0 0 8px white) drop-shadow(0 0 14px white)',
+      pointerEvents: 'none',
+    }}
+  />
+)}
+                          {placedBuilding && (
+                            <img
+  className="space-token-icon"
+  src={
+    placedBuilding.type === 'city'
+      ? cityImageByColor[color]
+      : starportImageByColor[color]
+  }
+  alt={`${color} ${placedBuilding.type}`}
+  style={{
+    width: '100%',
+    height: '100%',
+    objectFit: 'contain',
+  }}
+/>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                  {gameSetup.playersWithFlagships.includes(color) && (
+                    <div className="subsection">
+                      <strong>Add Flagship Upgrades</strong>
+                      <div className="chip-row">
+                        <button
+                          className={
+                            selectedFlagshipBuilding[color] === 'city'
+                              ? 'selected-chip'
+                              : ''
+                          }
+                          onClick={() =>
+                            setSelectedFlagshipBuilding((prev) => ({
+                              ...prev,
+                              [color]: prev[color] === 'city' ? undefined : 'city',
+                            }))
+                          }
+                          disabled={player.cities <= 0}
+                        >
+                          Add City
+                        </button>
+
+                        <button
+                          className={
+                            selectedFlagshipBuilding[color] === 'starport'
+                              ? 'selected-chip'
+                              : ''
+                          }
+                          onClick={() =>
+                            setSelectedFlagshipBuilding((prev) => ({
+                              ...prev,
+                              [color]:
+                                prev[color] === 'starport' ? undefined : 'starport',
+                            }))
+                          }
+                          disabled={player.starports <= 0}
+                        >
+                          Add Starport
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="inline-controls">
                     <label>Power</label>
                     <input
@@ -244,17 +438,30 @@ export default function PlayerBoards() {
                     )}
                   </div>
 
-                  <div className="inline-controls grow">
+                                    <div className="inline-controls grow">
                     <label>Fate</label>
                     <select
                       value={player.fate ?? ''}
                       onChange={(event) => updatePlayer(color, { fate: event.target.value || null })}
                     >
-                      {fateOptions.map((fate) => (
-                        <option key={fate} value={fate}>
-                          {fate === '' ? 'None' : fate}
-                        </option>
-                      ))}
+                      {fateOptions.map((fate) => {
+                        const isPickedByAnotherPlayer =
+                          fate !== '' &&
+                          activePlayers.some(
+                            (otherPlayer) =>
+                              otherPlayer.color !== color && otherPlayer.fate === fate
+                          );
+
+                        return (
+                          <option
+                            key={fate}
+                            value={fate}
+                            disabled={isPickedByAnotherPlayer}
+                          >
+                            {fate === '' ? 'None' : fate}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
 

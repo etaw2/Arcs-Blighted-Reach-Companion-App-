@@ -5,6 +5,7 @@ import PlayerBoards from './components/PlayerBoards';
 import SelectedSpacePanel from './components/SelectedSpacePanel';
 import { useGameStore } from './gameStore';
 import { createEmptyPlayer, type GameSetup, type PlayerColor } from './gameState';
+import { BackgroundMusic } from './components/BackgroundMusic';
 
 const allPlayerColors: PlayerColor[] = ['blue', 'red', 'yellow', 'white'];
 
@@ -213,7 +214,10 @@ export default function App() {
             <h1>Arcs Visual Tracker</h1>
             <p>Click the board spaces to edit gates and planets. Player boards are editable below.</p>
           </div>
+          <div className="topbar-actions">
+                      <BackgroundMusic />
           <button className="reset-button" onClick={resetGame}>Reset game</button>
+          </div>
         </header>
 
         <section className="main-layout">

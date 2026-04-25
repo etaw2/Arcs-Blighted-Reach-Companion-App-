@@ -85,6 +85,10 @@ function getCourtGroupKey(card: CourtCard) {
   return card.id.split('-')[0];
 }
 
+function isFaithfulActionCard(card: ActionCard) {
+  return /^F\d+-/.test(card.id) && !card.id.startsWith('F5-');
+}
+
 function groupCourtCards(cards: CourtCard[]) {
   return cards.reduce<Record<string, CourtCard[]>>((groups, card) => {
     const groupKey = getCourtGroupKey(card);
@@ -170,24 +174,16 @@ function CardTile({
         display: 'flex',
         flexDirection: 'column',
         gap: '0.4rem',
-        alignItems: 'flex-start',
+        alignItems: 'stretch',
+        width: '7.9rem',
       }}
     >
       {children}
-      {actions ? (
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '0.35rem',
-          }}
-        >
-          {actions}
-        </div>
-      ) : null}
+      {actions ? <div className="card-tile-actions">{actions}</div> : null}
     </div>
   );
 }
+
 
 export default function CardsPanel() {
   const gameState = useGameStore((state) => state.gameState);
@@ -205,10 +201,6 @@ export default function CardsPanel() {
   const scrapActionCard = useGameStore((state) => state.scrapActionCard);
 
   const [showAvailableCourt, setShowAvailableCourt] = useState(false);
-  const [showAvailableLaws, setShowAvailableLaws] = useState(false);
-  const [showAvailableEdicts, setShowAvailableEdicts] = useState(false);
-  const [showAvailableSummit, setShowAvailableSummit] = useState(false);
-  const [showAvailableAction, setShowAvailableAction] = useState(false);
 
   const [showCourt, setShowCourt] = useState(false);
   const [showLaws, setShowLaws] = useState(false);
@@ -289,10 +281,29 @@ export default function CardsPanel() {
     [summitIds, scrappedIds]
   );
 
+  const availableFaithfulActionCards = useMemo(
+    () =>
+      sortById(
+        allActionCards.filter(
+          (card) =>
+            isFaithfulActionCard(card) &&
+            !courtIds.has(card.id) &&
+            !actionDeckIds.has(card.id) &&
+            !scrappedIds.has(card.id)
+        )
+      ),
+    [courtIds, actionDeckIds, scrappedIds]
+  );
+
   const availableActionCards = useMemo(
     () =>
       sortById(
-        allActionCards.filter((card) => !actionDeckIds.has(card.id) && !scrappedIds.has(card.id))
+        allActionCards.filter(
+          (card) =>
+            !isFaithfulActionCard(card) &&
+            !actionDeckIds.has(card.id) &&
+            !scrappedIds.has(card.id)
+        )
       ),
     [actionDeckIds, scrappedIds]
   );
@@ -329,6 +340,24 @@ export default function CardsPanel() {
       font-size: initial !important;
       line-height: initial !important;
     }
+
+    .card-tile-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      width: 100%;
+      position: relative;
+      z-index: 2;
+    }
+
+    .card-tile-actions button {
+      width: 100%;
+      white-space: normal;
+      text-align: center;
+      line-height: 1.15;
+      padding-left: 0.35rem;
+      padding-right: 0.35rem;
+    }
   `}
 </style>
 
@@ -336,11 +365,11 @@ export default function CardsPanel() {
         <h2>Available Cards</h2>
 
         <SectionToggle
-          title="Available Court Cards"
+          title="Available Cards"
           isOpen={showAvailableCourt}
           onToggle={() => setShowAvailableCourt((prev) => !prev)}
         />
-        {showAvailableCourt && (
+                {showAvailableCourt && (
           <div className="subsection">
             <input
               value={availableCourtSearch}
@@ -358,141 +387,234 @@ export default function CardsPanel() {
               }}
             />
 
-            {availableCourtCards.length === 0 ? (
+            {availableCourtCards.length === 0 &&
+availableLawCards.length === 0 &&
+availableEdictCards.length === 0 &&
+availableSummitCards.length === 0 &&
+availableFaithfulActionCards.length === 0 &&
+availableActionCards.length === 0? (
               <p>No available court cards.</p>
-            ) : filteredAvailableCourtCards.length === 0 ? (
+            ) : filteredAvailableCourtCards.length === 0 &&
+  availableLawCards.filter((card) =>
+    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+  ).length === 0 &&
+  availableEdictCards.filter((card) =>
+    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+  ).length === 0 &&
+  availableSummitCards.filter((card) =>
+    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+  ).length === 0 &&
+  availableFaithfulActionCards.filter((card) =>
+    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+  ).length === 0 &&
+  availableActionCards.filter((card) =>
+    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+  ).length === 0 ? (
               <p>No available court cards match that search.</p>
             ) : (
-              availableCourtGroupOrder.map((groupKey) => (
-                <div key={groupKey} style={{ marginBottom: '1.25rem' }}>
-                  <h3
-                    style={{
+              <>
+                {availableCourtGroupOrder.map((groupKey) => (
+                  <div key={groupKey} style={{ marginBottom: '1.25rem' }}>
+                    <h3
+                      style={{
+                        marginBottom: '0.75rem',
+                        fontSize: '1.35rem',
+                        fontWeight: 700,
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
+                        paddingBottom: '0.35rem',
+                      }}
+                    >
+                      {COURT_GROUP_LABELS[groupKey] ?? groupKey}
+                    </h3>
+
+                    <CardGrid>
+                      {sortById(availableCourtCardsByGroup[groupKey]).map((card) => (
+                        <CardTile
+                          key={card.id}
+                          actions={
+                            <button onClick={() => addCourtCardToDeck(card)}>Add to Court</button>
+                          }
+                        >
+                          <CardPicture card={card} />
+                        </CardTile>
+                      ))}
+                    </CardGrid>
+                  </div>
+                ))}
+
+                {availableLawCards
+                  .filter((card) =>
+                    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                  )
+                  .length > 0 && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <h3 style={{
                       marginBottom: '0.75rem',
                       fontSize: '1.35rem',
                       fontWeight: 700,
                       borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
                       paddingBottom: '0.35rem',
-                    }}
-                  >
-                    {COURT_GROUP_LABELS[groupKey] ?? groupKey}
-                  </h3>
+                    }}>
+                      Laws
+                    </h3>
+                    <CardGrid>
+                      {availableLawCards
+                        .filter((card) =>
+                          getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                        )
+                        .map((card) => (
+                          <CardTile
+                            key={card.id}
+                            actions={<button onClick={() => addRuleCard('laws', card)}>Add to Laws</button>}
+                          >
+                            <CardPicture card={card} />
+                          </CardTile>
+                        ))}
+                    </CardGrid>
+                  </div>
+                )}
 
-                  <CardGrid>
-                    {sortById(availableCourtCardsByGroup[groupKey]).map((card) => (
-                      <CardTile
-                        key={card.id}
-                        actions={
-                          <button onClick={() => addCourtCardToDeck(card)}>Add to Court</button>
-                        }
-                      >
-                        <CardPicture card={card} />
-                      </CardTile>
-                    ))}
-                  </CardGrid>
-                </div>
-              ))
-            )}
-          </div>
-        )}
+                {availableEdictCards
+                  .filter((card) =>
+                    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                  )
+                  .length > 0 && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <h3 style={{
+                      marginBottom: '0.75rem',
+                      fontSize: '1.35rem',
+                      fontWeight: 700,
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
+                      paddingBottom: '0.35rem',
+                    }}>
+                      Edicts
+                    </h3>
+                    <CardGrid>
+                      {availableEdictCards
+                        .filter((card) =>
+                          getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                        )
+                        .map((card) => (
+                          <CardTile
+                            key={card.id}
+                            actions={<button onClick={() => addRuleCard('edicts', card)}>Add to Edicts</button>}
+                          >
+                            <CardPicture card={card} />
+                          </CardTile>
+                        ))}
+                    </CardGrid>
+                  </div>
+                )}
 
-        <SectionToggle
-          title="Available Laws"
-          isOpen={showAvailableLaws}
-          onToggle={() => setShowAvailableLaws((prev) => !prev)}
-        />
-        {showAvailableLaws && (
-          <div className="subsection">
-            {availableLawCards.length === 0 ? (
-              <p>No available laws.</p>
-            ) : (
-              <CardGrid>
-                {availableLawCards.map((card) => (
-                  <CardTile
-                    key={card.id}
-                    actions={<button onClick={() => addRuleCard('laws', card)}>Add to Laws</button>}
-                  >
-                    <CardPicture card={card} />
-                  </CardTile>
-                ))}
-              </CardGrid>
-            )}
-          </div>
-        )}
+                {availableSummitCards
+                  .filter((card) =>
+                    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                  )
+                  .length > 0 && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <h3 style={{
+                      marginBottom: '0.75rem',
+                      fontSize: '1.35rem',
+                      fontWeight: 700,
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
+                      paddingBottom: '0.35rem',
+                    }}>
+                      Summit
+                    </h3>
+                    <CardGrid>
+                      {availableSummitCards
+                        .filter((card) =>
+                          getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                        )
+                        .map((card) => (
+                          <CardTile
+                            key={card.id}
+                            actions={<button onClick={() => addRuleCard('summit', card)}>Add to Summit</button>}
+                          >
+                            <CardPicture card={card} />
+                          </CardTile>
+                        ))}
+                    </CardGrid>
+                  </div>
+                                )}
 
-        <SectionToggle
-          title="Available Edicts"
-          isOpen={showAvailableEdicts}
-          onToggle={() => setShowAvailableEdicts((prev) => !prev)}
-        />
-        {showAvailableEdicts && (
-          <div className="subsection">
-            {availableEdictCards.length === 0 ? (
-              <p>No available edicts.</p>
-            ) : (
-              <CardGrid>
-                {availableEdictCards.map((card) => (
-                  <CardTile
-                    key={card.id}
-                    actions={
-                      <button onClick={() => addRuleCard('edicts', card)}>Add to Edicts</button>
-                    }
-                  >
-                    <CardPicture card={card} />
-                  </CardTile>
-                ))}
-              </CardGrid>
-            )}
-          </div>
-        )}
+                {availableFaithfulActionCards
+                  .filter((card) =>
+                    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                  )
+                  .length > 0 && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <h3 style={{
+                      marginBottom: '0.75rem',
+                      fontSize: '1.35rem',
+                      fontWeight: 700,
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
+                      paddingBottom: '0.35rem',
+                    }}>
+                      Faithful Actions
+                    </h3>
+                    <CardGrid>
+                      {availableFaithfulActionCards
+                        .filter((card) =>
+                          getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                        )
+                        .map((card) => (
+                          <CardTile
+                            key={card.id}
+                            actions={
+                              <>
+                                <button onClick={() => addCourtCardToDeck(card as unknown as CourtCard)}>
+                                  Add to Court
+                                </button>
+                                <button onClick={() => addActionCardToDeck(card)}>
+                                  Add to Action Deck
+                                </button>
+                              </>
+                            }
+                          >
+                            <CardPicture card={card} />
+                          </CardTile>
+                        ))}
+                    </CardGrid>
+                  </div>
+                )}
 
-        <SectionToggle
-          title="Available Summit Cards"
-          isOpen={showAvailableSummit}
-          onToggle={() => setShowAvailableSummit((prev) => !prev)}
-        />
-        {showAvailableSummit && (
-          <div className="subsection">
-            {availableSummitCards.length === 0 ? (
-              <p>No available summit cards.</p>
-            ) : (
-              <CardGrid>
-                {availableSummitCards.map((card) => (
-                  <CardTile
-                    key={card.id}
-                    actions={
-                      <button onClick={() => addRuleCard('summit', card)}>Add to Summit</button>
-                    }
-                  >
-                    <CardPicture card={card} />
-                  </CardTile>
-                ))}
-              </CardGrid>
-            )}
-          </div>
-        )}
-
-        <SectionToggle
-          title="Available Action Cards"
-          isOpen={showAvailableAction}
-          onToggle={() => setShowAvailableAction((prev) => !prev)}
-        />
-        {showAvailableAction && (
-          <div className="subsection">
-            {availableActionCards.length === 0 ? (
-              <p>No available action cards.</p>
-            ) : (
-              <CardGrid>
-                {availableActionCards.map((card) => (
-                  <CardTile
-                    key={card.id}
-                    actions={
-                      <button onClick={() => addActionCardToDeck(card)}>Add to Action Deck</button>
-                    }
-                  >
-                    <CardPicture card={card} />
-                  </CardTile>
-                ))}
-              </CardGrid>
+                {availableActionCards
+                  .filter((card) =>
+                    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                  )
+                  .length > 0 && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <h3 style={{
+                      marginBottom: '0.75rem',
+                      fontSize: '1.35rem',
+                      fontWeight: 700,
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
+                      paddingBottom: '0.35rem',
+                    }}>
+                      Events
+                    </h3>
+                    <CardGrid>
+                      {availableActionCards
+                        .filter((card) =>
+                          getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                        )
+                        .map((card) => (
+                          <CardTile
+                            key={card.id}
+                            actions={
+                              <button onClick={() => addActionCardToDeck(card)}>
+                                Add to Action Deck
+                              </button>
+                            }
+                          >
+                            <CardPicture card={card} />
+                          </CardTile>
+                        ))}
+                    </CardGrid>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
