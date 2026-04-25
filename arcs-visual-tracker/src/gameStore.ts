@@ -2,7 +2,10 @@ import { create } from 'zustand';
 import {
   type ActionCard,
   type Building,
+  type BuildingType,
   type ClusterId,
+  type FlagshipBoardSlotType,
+  type FlagshipUpgradeId,
   type CourtCard,
   type GameSetup,
   type GameState,
@@ -15,6 +18,7 @@ import {
   type RuleCollection,
   type SaveGameNumber,
   type ShipColor,
+  createEmptyFlagshipBoard,
   createInitialGameState,
   defaultGameSetup,
 } from './gameState';
@@ -52,6 +56,71 @@ const normalizeGameSetup = (gameSetup?: Partial<GameSetup>): GameSetup => ({
     ...gameSetup?.optionalStructures,
   },
 });
+
+const clearSeatsFromMap = (map: GameState['map']): GameState['map'] =>
+  Object.fromEntries(
+    Object.entries(map).map(([clusterId, cluster]) => [
+      clusterId,
+      {
+        ...cluster,
+        gate: {
+          ...cluster.gate,
+          station: cluster.gate.station
+            ? {
+                ...cluster.gate.station,
+                seat: false,
+                seatNumber: null,
+              }
+            : null,
+        },
+        planetTri: {
+          ...cluster.planetTri,
+          cloudCity: cluster.planetTri.cloudCity
+            ? {
+                ...cluster.planetTri.cloudCity,
+                seat: false,
+                seatNumber: null,
+              }
+            : null,
+          buildings: cluster.planetTri.buildings.map((building) => ({
+            ...building,
+            seat: false,
+            seatNumber: null,
+          })),
+        },
+        planetMoon: {
+          ...cluster.planetMoon,
+          cloudCity: cluster.planetMoon.cloudCity
+            ? {
+                ...cluster.planetMoon.cloudCity,
+                seat: false,
+                seatNumber: null,
+              }
+            : null,
+          buildings: cluster.planetMoon.buildings.map((building) => ({
+            ...building,
+            seat: false,
+            seatNumber: null,
+          })),
+        },
+        planetHex: {
+          ...cluster.planetHex,
+          cloudCity: cluster.planetHex.cloudCity
+            ? {
+                ...cluster.planetHex.cloudCity,
+                seat: false,
+                seatNumber: null,
+              }
+            : null,
+          buildings: cluster.planetHex.buildings.map((building) => ({
+            ...building,
+            seat: false,
+            seatNumber: null,
+          })),
+        },
+      },
+    ])
+  ) as GameState['map'];
 
 const removeFlagshipColorFromMap = (
   map: GameState['map'],
@@ -194,6 +263,9 @@ interface GameStore {
   removeShipFromGate: (clusterId: ClusterId, shipIndex: number) => void;
   changeGateBlight: (clusterId: ClusterId, delta: number) => void;
   toggleGateFlagship: (clusterId: ClusterId, color: PlayerColor) => void;
+  setGatePort: (clusterId: ClusterId, color: PlayerColor | null) => void;
+  setGateStation: (clusterId: ClusterId, color: PlayerColor | null) => void;
+  toggleGateStationSeat: (clusterId: ClusterId, seat: boolean) => void;
 
   addShipToPlanet: (clusterId: ClusterId, planetKey: PlanetKey, color: ShipColor) => void;
   removeShipFromPlanet: (clusterId: ClusterId, planetKey: PlanetKey, shipIndex: number) => void;
@@ -204,6 +276,8 @@ interface GameStore {
   setPlanetPortal: (clusterId: ClusterId, planetKey: PlanetKey, portal: boolean) => void;
   setPlanetBanner: (clusterId: ClusterId, planetKey: PlanetKey, banner: boolean) => void;
   setPlanetBroken: (clusterId: ClusterId, planetKey: PlanetKey, broken: boolean) => void;
+  setPlanetCloudCity: (clusterId: ClusterId, planetKey: PlanetKey, color: PlayerColor | null) => void;
+  setSeatOnCloudCity: (clusterId: ClusterId, planetKey: PlanetKey, seat: boolean) => void;
   setSeatOnBuilding: (
     clusterId: ClusterId,
     planetKey: PlanetKey,
@@ -223,8 +297,18 @@ interface GameStore {
 
   addPlayer: (player: PlayerState) => void;
   removePlayer: (color: PlayerColor) => void;
-  updatePlayer: (color: PlayerColor, updates: Partial<PlayerState>) => void;
-  updatePlayerResources: (color: PlayerColor, resourceUpdates: Partial<ResourceInventory>) => void;
+    updatePlayerResources: (color: PlayerColor, resourceUpdates: Partial<ResourceInventory>) => void;
+  placeFlagshipBoardBuilding: (
+    color: PlayerColor,
+    upgradeId: FlagshipUpgradeId,
+    slotType: FlagshipBoardSlotType,
+    buildingType: BuildingType
+  ) => void;
+  removeFlagshipBoardBuilding: (
+    color: PlayerColor,
+    upgradeId: FlagshipUpgradeId,
+    slotType: FlagshipBoardSlotType
+  ) => void;
 }
 
 export const useGameStore = create<GameStore>((set) => ({
@@ -254,23 +338,30 @@ export const useGameStore = create<GameStore>((set) => ({
     })),
 
   updateGameSetup: (updates) =>
-    set((state) => ({
-      gameState: {
-        ...state.gameState,
-        gameSetup: normalizeGameSetup({
-          ...state.gameState.gameSetup,
-          ...updates,
-          optionalTokens: {
-            ...state.gameState.gameSetup.optionalTokens,
-            ...updates.optionalTokens,
-          },
-          optionalStructures: {
-            ...state.gameState.gameSetup.optionalStructures,
-            ...updates.optionalStructures,
-          },
-        }),
-      },
-    })),
+    set((state) => {
+      const nextGameSetup = normalizeGameSetup({
+        ...state.gameState.gameSetup,
+        ...updates,
+        optionalTokens: {
+          ...state.gameState.gameSetup.optionalTokens,
+          ...updates.optionalTokens,
+        },
+        optionalStructures: {
+          ...state.gameState.gameSetup.optionalStructures,
+          ...updates.optionalStructures,
+        },
+      });
+
+      return {
+        gameState: {
+          ...state.gameState,
+          gameSetup: nextGameSetup,
+          map: nextGameSetup.optionalTokens.foundersSeatTokens
+            ? state.gameState.map
+            : clearSeatsFromMap(state.gameState.map),
+        },
+      };
+    }),
 
   setSetupComplete: (setupComplete) =>
     set((state) => ({
@@ -346,9 +437,7 @@ export const useGameStore = create<GameStore>((set) => ({
             color === 'imperial'
               ? state.gameState.players
               : state.gameState.players.map((player) =>
-                  player.color === color
-                    ? { ...player, ships: player.ships - 1 }
-                    : player
+                  player.color === color ? { ...player, ships: player.ships - 1 } : player
                 ),
         },
       };
@@ -429,6 +518,234 @@ export const useGameStore = create<GameStore>((set) => ({
       };
     }),
 
+  setGatePort: (clusterId, color) =>
+    set((state) => {
+      if (!state.gameState.gameSetup.optionalStructures.gatePorts) {
+        return state;
+      }
+
+      const cluster = state.gameState.map[clusterId];
+      const gate = cluster.gate;
+
+      if (color === null) {
+        const removedPort = gate.port;
+
+        if (!removedPort || removedPort.color === 'free') {
+          return state;
+        }
+
+        return {
+          gameState: {
+            ...state.gameState,
+            players: state.gameState.players.map((player) =>
+              player.color === removedPort.color
+                ? { ...player, starports: player.starports + 1 }
+                : player
+            ),
+            map: {
+              ...state.gameState.map,
+              [clusterId]: {
+                ...cluster,
+                gate: {
+                  ...gate,
+                  port: null,
+                },
+              },
+            },
+          },
+        };
+      }
+
+      if (gate.port !== null) {
+        return state;
+      }
+
+      const owner = state.gameState.players.find((player) => player.color === color);
+
+      if (!owner || owner.starports <= 0) {
+        return state;
+      }
+
+      return {
+        gameState: {
+          ...state.gameState,
+          players: state.gameState.players.map((player) =>
+            player.color === color ? { ...player, starports: player.starports - 1 } : player
+          ),
+          map: {
+            ...state.gameState.map,
+            [clusterId]: {
+              ...cluster,
+              gate: {
+                ...gate,
+                port: {
+                  type: 'starport',
+                  color,
+                  seat: false,
+                  seatNumber: null,
+                },
+              },
+            },
+          },
+        },
+      };
+    }),
+
+  setGateStation: (clusterId, color) =>
+    set((state) => {
+      if (!state.gameState.gameSetup.optionalStructures.gateStations) {
+        return state;
+      }
+
+      const cluster = state.gameState.map[clusterId];
+      const gate = cluster.gate;
+
+      if (color === null) {
+        const removedStation = gate.station;
+
+        if (!removedStation || removedStation.color === 'free') {
+          return state;
+        }
+
+        return {
+          gameState: {
+            ...state.gameState,
+            players: state.gameState.players.map((player) =>
+              player.color === removedStation.color
+                ? { ...player, cities: player.cities + 1 }
+                : player
+            ),
+            map: {
+              ...state.gameState.map,
+              [clusterId]: {
+                ...cluster,
+                gate: {
+                  ...gate,
+                  station: null,
+                },
+              },
+            },
+          },
+        };
+      }
+
+      if (gate.station !== null) {
+        return state;
+      }
+
+      const owner = state.gameState.players.find((player) => player.color === color);
+
+      if (!owner || owner.cities <= 0) {
+        return state;
+      }
+
+      return {
+        gameState: {
+          ...state.gameState,
+          players: state.gameState.players.map((player) =>
+            player.color === color ? { ...player, cities: player.cities - 1 } : player
+          ),
+          map: {
+            ...state.gameState.map,
+            [clusterId]: {
+              ...cluster,
+              gate: {
+                ...gate,
+                station: {
+                  type: 'city',
+                  color,
+                  seat: false,
+                  seatNumber: null,
+                },
+              },
+            },
+          },
+        },
+      };
+    }),
+
+  toggleGateStationSeat: (clusterId, seat) =>
+    set((state) => {
+      if (!state.gameState.gameSetup.optionalTokens.foundersSeatTokens) {
+        return state;
+      }
+
+      const cluster = state.gameState.map[clusterId];
+
+      if (!cluster.gate.station) {
+        return state;
+      }
+
+      const seatNumber = getClusterSeatNumber(clusterId);
+
+      const updatedCluster = {
+        ...cluster,
+        gate: {
+          ...cluster.gate,
+          station: {
+            ...cluster.gate.station,
+            seat,
+            seatNumber: seat ? seatNumber : null,
+          },
+        },
+        planetTri: {
+          ...cluster.planetTri,
+          cloudCity: cluster.planetTri.cloudCity
+            ? {
+                ...cluster.planetTri.cloudCity,
+                seat: false,
+                seatNumber: null,
+              }
+            : null,
+          buildings: cluster.planetTri.buildings.map((building) => ({
+            ...building,
+            seat: false,
+            seatNumber: null,
+          })),
+        },
+        planetMoon: {
+          ...cluster.planetMoon,
+          cloudCity: cluster.planetMoon.cloudCity
+            ? {
+                ...cluster.planetMoon.cloudCity,
+                seat: false,
+                seatNumber: null,
+              }
+            : null,
+          buildings: cluster.planetMoon.buildings.map((building) => ({
+            ...building,
+            seat: false,
+            seatNumber: null,
+          })),
+        },
+        planetHex: {
+          ...cluster.planetHex,
+          cloudCity: cluster.planetHex.cloudCity
+            ? {
+                ...cluster.planetHex.cloudCity,
+                seat: false,
+                seatNumber: null,
+              }
+            : null,
+          buildings: cluster.planetHex.buildings.map((building) => ({
+            ...building,
+            seat: false,
+            seatNumber: null,
+          })),
+        },
+      };
+
+      return {
+        gameState: {
+          ...state.gameState,
+          map: {
+            ...state.gameState.map,
+            [clusterId]: updatedCluster,
+          },
+        },
+      };
+    }),
+
   addShipToPlanet: (clusterId, planetKey, color) =>
     set((state) => {
       if (color !== 'imperial') {
@@ -456,9 +773,7 @@ export const useGameStore = create<GameStore>((set) => ({
             color === 'imperial'
               ? state.gameState.players
               : state.gameState.players.map((player) =>
-                  player.color === color
-                    ? { ...player, ships: player.ships - 1 }
-                    : player
+                  player.color === color ? { ...player, ships: player.ships - 1 } : player
                 ),
         },
       };
@@ -539,7 +854,7 @@ export const useGameStore = create<GameStore>((set) => ({
       };
     }),
 
-  addBuildingToPlanet: (clusterId, planetKey, building) => {
+    addBuildingToPlanet: (clusterId, planetKey, building) => {
     let added = false;
 
     set((state) => {
@@ -553,6 +868,30 @@ export const useGameStore = create<GameStore>((set) => ({
         return state;
       }
 
+      if (
+        building.color !== 'free' &&
+        state.gameState.gameSetup.playersWithFlagships.includes(building.color)
+      ) {
+        return state;
+      }
+
+      const owningPlayer =
+        building.color === 'free'
+          ? null
+          : state.gameState.players.find((player) => player.color === building.color);
+
+      if (building.type === 'city' && building.color !== 'free') {
+        if (!owningPlayer || owningPlayer.cities <= 0) {
+          return state;
+        }
+      }
+
+      if (building.type === 'starport' && building.color !== 'free') {
+        if (!owningPlayer || owningPlayer.starports <= 0) {
+          return state;
+        }
+      }
+
       const updatedPlayers =
         building.color === 'free'
           ? state.gameState.players
@@ -562,10 +901,6 @@ export const useGameStore = create<GameStore>((set) => ({
               }
 
               if (building.type === 'city') {
-                if (player.cities <= 0) {
-                  return player;
-                }
-
                 return {
                   ...player,
                   cities: player.cities - 1,
@@ -573,10 +908,6 @@ export const useGameStore = create<GameStore>((set) => ({
               }
 
               if (building.type === 'starport') {
-                if (player.starports <= 0) {
-                  return player;
-                }
-
                 return {
                   ...player,
                   starports: player.starports - 1,
@@ -585,25 +916,6 @@ export const useGameStore = create<GameStore>((set) => ({
 
               return player;
             });
-
-      if (building.color !== 'free' && updatedPlayers === state.gameState.players) {
-        return state;
-      }
-
-      const owningPlayer =
-        building.color === 'free'
-          ? null
-          : updatedPlayers.find((player) => player.color === building.color);
-
-      if (
-        building.color !== 'free' &&
-        ((building.type === 'city' && !owningPlayer) ||
-          (building.type === 'city' && owningPlayer.cities < 0) ||
-          (building.type === 'starport' && !owningPlayer) ||
-          (building.type === 'starport' && owningPlayer.starports < 0))
-      ) {
-        return state;
-      }
 
       added = true;
 
@@ -743,10 +1055,11 @@ export const useGameStore = create<GameStore>((set) => ({
     set((state) => {
       const planet = state.gameState.map[clusterId][planetKey];
       const removedBuildings = broken ? planet.buildings : [];
+      const removedCloudCity = broken ? planet.cloudCity : null;
 
       const updatedPlayers = broken
         ? state.gameState.players.map((player) => {
-            let cityReturns = 0;
+            let cityReturns = removedCloudCity?.color === player.color ? 1 : 0;
             let starportReturns = 0;
 
             removedBuildings.forEach((building) => {
@@ -785,6 +1098,7 @@ export const useGameStore = create<GameStore>((set) => ({
                 ...planet,
                 broken,
                 buildings: broken ? [] : planet.buildings,
+                cloudCity: planet.cloudCity,
               },
             },
           },
@@ -792,17 +1106,87 @@ export const useGameStore = create<GameStore>((set) => ({
       };
     }),
 
-  setSeatOnBuilding: (clusterId, planetKey, buildingIndex, seat) =>
+  setPlanetCloudCity: (clusterId, planetKey, color) =>
     set((state) => {
-      const cluster = state.gameState.map[clusterId];
-      const targetPlanet = cluster[planetKey];
-      const targetBuilding = targetPlanet.buildings[buildingIndex];
-
-      if (!targetBuilding) {
+      if (!state.gameState.gameSetup.optionalStructures.cloudCities) {
         return state;
       }
 
-      if (targetBuilding.type !== 'city') {
+      const planet = state.gameState.map[clusterId][planetKey];
+
+      if (color === null) {
+        const removedCloudCity = planet.cloudCity;
+
+        if (!removedCloudCity) {
+          return state;
+        }
+
+        return {
+          gameState: {
+            ...state.gameState,
+            players: state.gameState.players.map((player) =>
+              player.color === removedCloudCity.color
+                ? { ...player, cities: player.cities + 1 }
+                : player
+            ),
+            map: {
+              ...state.gameState.map,
+              [clusterId]: {
+                ...state.gameState.map[clusterId],
+                [planetKey]: {
+                  ...planet,
+                  cloudCity: null,
+                },
+              },
+            },
+          },
+        };
+      }
+
+      if (planet.cloudCity !== null) {
+        return state;
+      }
+
+      const owner = state.gameState.players.find((player) => player.color === color);
+
+      if (!owner || owner.cities <= 0) {
+        return state;
+      }
+
+      return {
+        gameState: {
+          ...state.gameState,
+          players: state.gameState.players.map((player) =>
+            player.color === color ? { ...player, cities: player.cities - 1 } : player
+          ),
+          map: {
+            ...state.gameState.map,
+            [clusterId]: {
+              ...state.gameState.map[clusterId],
+              [planetKey]: {
+                ...planet,
+                cloudCity: {
+                  color,
+                  seat: false,
+                  seatNumber: null,
+                },
+              },
+            },
+          },
+        },
+      };
+    }),
+
+  setSeatOnCloudCity: (clusterId, planetKey, seat) =>
+    set((state) => {
+      if (!state.gameState.gameSetup.optionalTokens.foundersSeatTokens) {
+        return state;
+      }
+
+      const cluster = state.gameState.map[clusterId];
+      const planet = cluster[planetKey];
+
+      if (!planet.cloudCity) {
         return state;
       }
 
@@ -810,8 +1194,28 @@ export const useGameStore = create<GameStore>((set) => ({
 
       const updatedCluster = {
         ...cluster,
+        gate: {
+          ...cluster.gate,
+          station: cluster.gate.station
+            ? {
+                ...cluster.gate.station,
+                seat: false,
+                seatNumber: null,
+              }
+            : null,
+        },
         planetTri: {
           ...cluster.planetTri,
+          cloudCity:
+            planetKey === 'planetTri'
+              ? {
+                  ...planet.cloudCity,
+                  seat,
+                  seatNumber: seat ? seatNumber : null,
+                }
+              : cluster.planetTri.cloudCity
+                ? { ...cluster.planetTri.cloudCity, seat: false, seatNumber: null }
+                : null,
           buildings: cluster.planetTri.buildings.map((building) => ({
             ...building,
             seat: false,
@@ -820,6 +1224,16 @@ export const useGameStore = create<GameStore>((set) => ({
         },
         planetMoon: {
           ...cluster.planetMoon,
+          cloudCity:
+            planetKey === 'planetMoon'
+              ? {
+                  ...planet.cloudCity,
+                  seat,
+                  seatNumber: seat ? seatNumber : null,
+                }
+              : cluster.planetMoon.cloudCity
+                ? { ...cluster.planetMoon.cloudCity, seat: false, seatNumber: null }
+                : null,
           buildings: cluster.planetMoon.buildings.map((building) => ({
             ...building,
             seat: false,
@@ -828,6 +1242,106 @@ export const useGameStore = create<GameStore>((set) => ({
         },
         planetHex: {
           ...cluster.planetHex,
+          cloudCity:
+            planetKey === 'planetHex'
+              ? {
+                  ...planet.cloudCity,
+                  seat,
+                  seatNumber: seat ? seatNumber : null,
+                }
+              : cluster.planetHex.cloudCity
+                ? { ...cluster.planetHex.cloudCity, seat: false, seatNumber: null }
+                : null,
+          buildings: cluster.planetHex.buildings.map((building) => ({
+            ...building,
+            seat: false,
+            seatNumber: null,
+          })),
+        },
+      };
+
+      return {
+        gameState: {
+          ...state.gameState,
+          map: {
+            ...state.gameState.map,
+            [clusterId]: updatedCluster,
+          },
+        },
+      };
+    }),
+
+  setSeatOnBuilding: (clusterId, planetKey, buildingIndex, seat) =>
+    set((state) => {
+      if (!state.gameState.gameSetup.optionalTokens.foundersSeatTokens) {
+        return state;
+      }
+
+      const cluster = state.gameState.map[clusterId];
+      const targetPlanet = cluster[planetKey];
+      const targetBuilding = targetPlanet.buildings[buildingIndex];
+
+      if (!targetBuilding) {
+        return state;
+      }
+
+      if (targetBuilding.type !== 'city' || targetBuilding.color === 'free') {
+        return state;
+      }
+
+      const seatNumber = getClusterSeatNumber(clusterId);
+
+      const updatedCluster = {
+        ...cluster,
+        gate: {
+          ...cluster.gate,
+          station: cluster.gate.station
+            ? {
+                ...cluster.gate.station,
+                seat: false,
+                seatNumber: null,
+              }
+            : null,
+        },
+        planetTri: {
+          ...cluster.planetTri,
+          cloudCity: cluster.planetTri.cloudCity
+            ? {
+                ...cluster.planetTri.cloudCity,
+                seat: false,
+                seatNumber: null,
+              }
+            : null,
+          buildings: cluster.planetTri.buildings.map((building) => ({
+            ...building,
+            seat: false,
+            seatNumber: null,
+          })),
+        },
+        planetMoon: {
+          ...cluster.planetMoon,
+          cloudCity: cluster.planetMoon.cloudCity
+            ? {
+                ...cluster.planetMoon.cloudCity,
+                seat: false,
+                seatNumber: null,
+              }
+            : null,
+          buildings: cluster.planetMoon.buildings.map((building) => ({
+            ...building,
+            seat: false,
+            seatNumber: null,
+          })),
+        },
+        planetHex: {
+          ...cluster.planetHex,
+          cloudCity: cluster.planetHex.cloudCity
+            ? {
+                ...cluster.planetHex.cloudCity,
+                seat: false,
+                seatNumber: null,
+              }
+            : null,
           buildings: cluster.planetHex.buildings.map((building) => ({
             ...building,
             seat: false,
@@ -1033,7 +1547,7 @@ export const useGameStore = create<GameStore>((set) => ({
       };
     }),
 
-  updatePlayerResources: (color, resourceUpdates) =>
+    updatePlayerResources: (color, resourceUpdates) =>
     set((state) => ({
       gameState: {
         ...state.gameState,
@@ -1042,6 +1556,104 @@ export const useGameStore = create<GameStore>((set) => ({
             ? { ...player, resources: { ...player.resources, ...resourceUpdates } }
             : player
         ),
+      },
+    })),
+
+  placeFlagshipBoardBuilding: (color, upgradeId, slotType, buildingType) =>
+    set((state) => {
+      if (!state.gameState.gameSetup.playersWithFlagships.includes(color)) {
+        return state;
+      }
+
+      return {
+        gameState: {
+          ...state.gameState,
+          players: state.gameState.players.map((player) => {
+            if (player.color !== color) {
+              return player;
+            }
+
+            const fallbackFlagshipBoard = createEmptyFlagshipBoard();
+            const flagshipBoard = player.flagshipBoard ?? fallbackFlagshipBoard;
+            const upgradeState = flagshipBoard[upgradeId] ?? fallbackFlagshipBoard[upgradeId];
+
+            if (upgradeState[slotType]) {
+              return player;
+            }
+
+            if (slotType === 'armor' && !upgradeState.upgrade) {
+              return player;
+            }
+
+            if (buildingType === 'city' && player.cities <= 0) {
+              return player;
+            }
+
+            if (buildingType === 'starport' && player.starports <= 0) {
+              return player;
+            }
+
+            return {
+              ...player,
+              cities: buildingType === 'city' ? player.cities - 1 : player.cities,
+              starports:
+                buildingType === 'starport' ? player.starports - 1 : player.starports,
+              flagshipBoard: {
+                ...fallbackFlagshipBoard,
+                ...flagshipBoard,
+                [upgradeId]: {
+                  ...upgradeState,
+                  [slotType]: {
+                    type: buildingType,
+                  },
+                },
+              },
+            };
+          }),
+        },
+      };
+    }),
+
+  removeFlagshipBoardBuilding: (color, upgradeId, slotType) =>
+    set((state) => ({
+      gameState: {
+        ...state.gameState,
+        players: state.gameState.players.map((player) => {
+          if (player.color !== color) {
+            return player;
+          }
+
+          const fallbackFlagshipBoard = createEmptyFlagshipBoard();
+          const flagshipBoard = player.flagshipBoard ?? fallbackFlagshipBoard;
+          const upgradeState = flagshipBoard[upgradeId] ?? fallbackFlagshipBoard[upgradeId];
+          const removedBuilding = upgradeState[slotType];
+
+          if (!removedBuilding) {
+            return player;
+          }
+
+          if (slotType === 'upgrade' && upgradeState.armor) {
+            return player;
+          }
+
+          return {
+            ...player,
+            cities:
+              removedBuilding.type === 'city' ? player.cities + 1 : player.cities,
+            starports:
+              removedBuilding.type === 'starport'
+                ? player.starports + 1
+                : player.starports,
+            flagshipBoard: {
+              ...fallbackFlagshipBoard,
+              ...flagshipBoard,
+              [upgradeId]: {
+                ...upgradeState,
+                [slotType]: null,
+              },
+            },
+          };
+        }),
       },
     })),
 }));

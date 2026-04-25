@@ -9,11 +9,54 @@ import {
 } from '../CardData';
 import type { ActionCard, CourtCard, GameCard, RuleCard } from '../gameState';
 import GameCardView from './GameCardView';
+import { playSound } from '../utils/sound';
 
 const EMPTY_COURT_CARDS: CourtCard[] = [];
 const EMPTY_RULE_CARDS: RuleCard[] = [];
 const EMPTY_ACTION_CARDS: ActionCard[] = [];
 const EMPTY_SCRAP_CARDS: GameCard[] = [];
+
+const COURT_GROUP_LABELS: Record<string, string> = {
+  cc: 'Base Court',
+  l: 'Base Lore Cards',
+  F1: 'Steward',
+  F2: 'Founder',
+  F3: 'Magnate',
+  F4: 'Advocate',
+  F5: 'Caretaker',
+  F6: 'Partisan',
+  F7: 'Admiral',
+  F8: 'Believer',
+  F9: 'Pathfinder',
+  F10: 'Hegemon',
+  F11: 'Planet Breaker',
+  F12: 'Pirate',
+  F13: 'Blight Speaker',
+  F14: 'Pacifist',
+  F15: 'Peacekeeper',
+  F16: 'Warden',
+};
+
+const COURT_GROUP_ORDER = [
+  'cc',
+  'l',
+  'F1',
+  'F2',
+  'F3',
+  'F4',
+  'F5',
+  'F6',
+  'F7',
+  'F8',
+  'F9',
+  'F10',
+  'F11',
+  'F12',
+  'F13',
+  'F14',
+  'F15',
+  'F16',
+];
 
 function sortById<T extends { id: string }>(cards: T[]): T[] {
   const parseId = (id: string) => {
@@ -39,6 +82,47 @@ function sortById<T extends { id: string }>(cards: T[]): T[] {
   });
 }
 
+function getCourtGroupKey(card: CourtCard) {
+  return card.id.split('-')[0];
+}
+
+function isFaithfulActionCard(card: ActionCard) {
+  return /^F\d+-/.test(card.id) && !card.id.startsWith('F5-');
+}
+
+function groupCourtCards(cards: CourtCard[]) {
+  return cards.reduce<Record<string, CourtCard[]>>((groups, card) => {
+    const groupKey = getCourtGroupKey(card);
+
+    if (!groups[groupKey]) {
+      groups[groupKey] = [];
+    }
+
+    groups[groupKey].push(card);
+    return groups;
+  }, {});
+}
+
+function getCardSearchText(card: GameCard) {
+  const searchableCard = card as GameCard & {
+    name?: string;
+    title?: string;
+    suit?: string;
+    type?: string;
+  };
+
+  return [
+    searchableCard.id,
+    searchableCard.name,
+    searchableCard.title,
+    searchableCard.suit,
+    searchableCard.type,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
+
 function SectionToggle({
   title,
   isOpen,
@@ -50,7 +134,14 @@ function SectionToggle({
 }) {
   return (
     <div style={{ marginBottom: '0.75rem' }}>
-      <button onClick={onToggle}>{isOpen ? `Hide ${title}` : `View ${title}`}</button>
+      <button
+        onClick={() => {
+          playSound(isOpen ? 'panelClose' : 'panelOpen');
+          onToggle();
+        }}
+      >
+        {isOpen ? `Hide ${title}` : `View ${title}`}
+      </button>
     </div>
   );
 }
@@ -62,9 +153,18 @@ function CardGrid({ children }: { children: React.ReactNode }) {
         display: 'flex',
         flexWrap: 'wrap',
         gap: '0.9rem',
+        alignItems: 'flex-start',
       }}
     >
       {children}
+    </div>
+  );
+}
+
+function CardPicture({ card }: { card: GameCard }) {
+  return (
+    <div className="card-picture-only">
+      <GameCardView card={card} size="small" />
     </div>
   );
 }
@@ -82,24 +182,16 @@ function CardTile({
         display: 'flex',
         flexDirection: 'column',
         gap: '0.4rem',
-        alignItems: 'flex-start',
+        alignItems: 'stretch',
+        width: '7.9rem',
       }}
     >
       {children}
-      {actions ? (
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '0.35rem',
-          }}
-        >
-          {actions}
-        </div>
-      ) : null}
+      {actions ? <div className="card-tile-actions">{actions}</div> : null}
     </div>
   );
 }
+
 
 export default function CardsPanel() {
   const gameState = useGameStore((state) => state.gameState);
@@ -117,10 +209,6 @@ export default function CardsPanel() {
   const scrapActionCard = useGameStore((state) => state.scrapActionCard);
 
   const [showAvailableCourt, setShowAvailableCourt] = useState(false);
-  const [showAvailableLaws, setShowAvailableLaws] = useState(false);
-  const [showAvailableEdicts, setShowAvailableEdicts] = useState(false);
-  const [showAvailableSummit, setShowAvailableSummit] = useState(false);
-  const [showAvailableAction, setShowAvailableAction] = useState(false);
 
   const [showCourt, setShowCourt] = useState(false);
   const [showLaws, setShowLaws] = useState(false);
@@ -128,6 +216,8 @@ export default function CardsPanel() {
   const [showSummit, setShowSummit] = useState(false);
   const [showActionDeck, setShowActionDeck] = useState(false);
   const [showScrapPile, setShowScrapPile] = useState(false);
+
+  const [availableCourtSearch, setAvailableCourtSearch] = useState('');
 
   const courtDeck = gameState.court?.inDeck ?? EMPTY_COURT_CARDS;
   const laws = gameState.rules?.laws ?? EMPTY_RULE_CARDS;
@@ -151,6 +241,32 @@ export default function CardsPanel() {
     [courtIds, scrappedIds]
   );
 
+  const filteredAvailableCourtCards = useMemo(() => {
+    const searchText = availableCourtSearch.trim().toLowerCase();
+
+    if (!searchText) {
+      return availableCourtCards;
+    }
+
+    return availableCourtCards.filter((card) => getCardSearchText(card).includes(searchText));
+  }, [availableCourtCards, availableCourtSearch]);
+
+  const availableCourtCardsByGroup = useMemo(
+    () => groupCourtCards(filteredAvailableCourtCards),
+    [filteredAvailableCourtCards]
+  );
+
+  const availableCourtGroupOrder = useMemo(() => {
+    const unknownGroups = Object.keys(availableCourtCardsByGroup)
+      .filter((groupKey) => !COURT_GROUP_ORDER.includes(groupKey))
+      .sort((a, b) => a.localeCompare(b));
+
+    return [
+      ...COURT_GROUP_ORDER.filter((groupKey) => availableCourtCardsByGroup[groupKey]),
+      ...unknownGroups,
+    ];
+  }, [availableCourtCardsByGroup]);
+
   const availableLawCards = useMemo(
     () =>
       sortById(allLawCards.filter((card) => !lawIds.has(card.id) && !scrappedIds.has(card.id))),
@@ -173,147 +289,428 @@ export default function CardsPanel() {
     [summitIds, scrappedIds]
   );
 
+  const availableFaithfulActionCards = useMemo(
+    () =>
+      sortById(
+        allActionCards.filter(
+          (card) =>
+            isFaithfulActionCard(card) &&
+            !courtIds.has(card.id) &&
+            !actionDeckIds.has(card.id) &&
+            !scrappedIds.has(card.id)
+        )
+      ),
+    [courtIds, actionDeckIds, scrappedIds]
+  );
+
   const availableActionCards = useMemo(
     () =>
       sortById(
-        allActionCards.filter((card) => !actionDeckIds.has(card.id) && !scrappedIds.has(card.id))
+        allActionCards.filter(
+          (card) =>
+            !isFaithfulActionCard(card) &&
+            !actionDeckIds.has(card.id) &&
+            !scrappedIds.has(card.id)
+        )
       ),
     [actionDeckIds, scrappedIds]
   );
 
   return (
-    <section className="main-layout" style={{ marginTop: '1rem' }}>
-      <aside className="panel">
+    <section
+      className="main-layout"
+      style={{
+        marginTop: '1rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem',
+        width: '100%',
+        maxWidth: 'none',
+        alignItems: 'stretch',
+      }}
+    >
+      <style>
+  {`
+    .card-picture-only {
+      position: relative;
+      z-index: 1;
+      min-height: 10rem;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      transition: transform 160ms ease, z-index 160ms ease, filter 160ms ease;
+      transform-origin: center center;
+      color: transparent !important;
+      font-size: 0 !important;
+      line-height: 0 !important;
+    }
+
+    .card-picture-only:hover {
+      transform: scale(2.15);
+      z-index: 9999;
+      filter: drop-shadow(0 0 14px rgba(0, 0, 0, 0.85));
+    }
+
+    .card-picture-only * {
+      color: transparent !important;
+      font-size: 0 !important;
+      line-height: 0 !important;
+    }
+
+    .card-picture-only img {
+      display: block !important;
+      color: initial !important;
+      font-size: initial !important;
+      line-height: initial !important;
+    }
+
+    .card-tile-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      width: 100%;
+      position: relative;
+      z-index: 2;
+    }
+
+    .subsection {
+      width: 100%;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .card-tile-actions button {
+      width: 100%;
+      white-space: normal;
+      text-align: center;
+      line-height: 1.15;
+      padding-left: 0.35rem;
+      padding-right: 0.35rem;
+    }
+  `}
+</style>
+
+      <aside
+        className="panel"
+        style={{
+          width: '100%',
+          maxWidth: 'none',
+          boxSizing: 'border-box',
+          alignSelf: 'stretch',
+          position: 'relative',
+        }}
+      >
         <h2>Available Cards</h2>
 
         <SectionToggle
-          title="Available Court Cards"
+          title="Available Cards"
           isOpen={showAvailableCourt}
           onToggle={() => setShowAvailableCourt((prev) => !prev)}
         />
-        {showAvailableCourt && (
+                {showAvailableCourt && (
           <div className="subsection">
-            {availableCourtCards.length === 0 ? (
+            <input
+              value={availableCourtSearch}
+              onChange={(event) => setAvailableCourtSearch(event.target.value)}
+              placeholder="Search available court cards..."
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                marginBottom: '1rem',
+                padding: '0.55rem 0.7rem',
+                borderRadius: '0.4rem',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                background: 'rgba(0, 0, 0, 0.35)',
+                color: 'white',
+              }}
+            />
+
+            {availableCourtCards.length === 0 &&
+availableLawCards.length === 0 &&
+availableEdictCards.length === 0 &&
+availableSummitCards.length === 0 &&
+availableFaithfulActionCards.length === 0 &&
+availableActionCards.length === 0? (
               <p>No available court cards.</p>
+            ) : filteredAvailableCourtCards.length === 0 &&
+  availableLawCards.filter((card) =>
+    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+  ).length === 0 &&
+  availableEdictCards.filter((card) =>
+    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+  ).length === 0 &&
+  availableSummitCards.filter((card) =>
+    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+  ).length === 0 &&
+  availableFaithfulActionCards.filter((card) =>
+    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+  ).length === 0 &&
+  availableActionCards.filter((card) =>
+    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+  ).length === 0 ? (
+              <p>No available court cards match that search.</p>
             ) : (
-              <CardGrid>
-                {availableCourtCards.map((card) => (
-                  <CardTile
-                    key={card.id}
-                    actions={<button onClick={() => addCourtCardToDeck(card)}>Add to Court</button>}
-                  >
-                    <GameCardView card={card} size="small" />
-                  </CardTile>
-                ))}
-              </CardGrid>
-            )}
-          </div>
-        )}
+              <>
+                {availableCourtGroupOrder.map((groupKey) => (
+                  <div key={groupKey} style={{ marginBottom: '1.25rem' }}>
+                    <h3
+                      style={{
+                        marginBottom: '0.75rem',
+                        fontSize: '1.35rem',
+                        fontWeight: 700,
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
+                        paddingBottom: '0.35rem',
+                      }}
+                    >
+                      {COURT_GROUP_LABELS[groupKey] ?? groupKey}
+                    </h3>
 
-        <SectionToggle
-          title="Available Laws"
-          isOpen={showAvailableLaws}
-          onToggle={() => setShowAvailableLaws((prev) => !prev)}
-        />
-        {showAvailableLaws && (
-          <div className="subsection">
-            {availableLawCards.length === 0 ? (
-              <p>No available laws.</p>
-            ) : (
-              <CardGrid>
-                {availableLawCards.map((card) => (
-                  <CardTile
-                    key={card.id}
-                    actions={<button onClick={() => addRuleCard('laws', card)}>Add to Laws</button>}
-                  >
-                    <GameCardView card={card} size="small" />
-                  </CardTile>
+                    <CardGrid>
+                      {sortById(availableCourtCardsByGroup[groupKey]).map((card) => (
+                        <CardTile
+                          key={card.id}
+                          actions={
+                            <button
+                              onClick={() => {
+                                playSound('cardMove');
+                                addCourtCardToDeck(card);
+                              }}
+                            >
+                              Add to Court
+                            </button>
+                          }
+                        >
+                          <CardPicture card={card} />
+                        </CardTile>
+                      ))}
+                    </CardGrid>
+                  </div>
                 ))}
-              </CardGrid>
-            )}
-          </div>
-        )}
 
-        <SectionToggle
-          title="Available Edicts"
-          isOpen={showAvailableEdicts}
-          onToggle={() => setShowAvailableEdicts((prev) => !prev)}
-        />
-        {showAvailableEdicts && (
-          <div className="subsection">
-            {availableEdictCards.length === 0 ? (
-              <p>No available edicts.</p>
-            ) : (
-              <CardGrid>
-                {availableEdictCards.map((card) => (
-                  <CardTile
-                    key={card.id}
-                    actions={
-                      <button onClick={() => addRuleCard('edicts', card)}>Add to Edicts</button>
-                    }
-                  >
-                    <GameCardView card={card} size="small" />
-                  </CardTile>
-                ))}
-              </CardGrid>
-            )}
-          </div>
-        )}
+                {availableLawCards
+                  .filter((card) =>
+                    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                  )
+                  .length > 0 && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <h3 style={{
+                      marginBottom: '0.75rem',
+                      fontSize: '1.35rem',
+                      fontWeight: 700,
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
+                      paddingBottom: '0.35rem',
+                    }}>
+                      Laws
+                    </h3>
+                    <CardGrid>
+                      {availableLawCards
+                        .filter((card) =>
+                          getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                        )
+                        .map((card) => (
+                          <CardTile
+                            key={card.id}
+                            actions={<button
+                              onClick={() => {
+                                playSound('cardMove');
+                                addRuleCard('laws', card);
+                              }}
+                            >
+                              Add to Laws
+                            </button>}
+                          >
+                            <CardPicture card={card} />
+                          </CardTile>
+                        ))}
+                    </CardGrid>
+                  </div>
+                )}
 
-        <SectionToggle
-          title="Available Summit Cards"
-          isOpen={showAvailableSummit}
-          onToggle={() => setShowAvailableSummit((prev) => !prev)}
-        />
-        {showAvailableSummit && (
-          <div className="subsection">
-            {availableSummitCards.length === 0 ? (
-              <p>No available summit cards.</p>
-            ) : (
-              <CardGrid>
-                {availableSummitCards.map((card) => (
-                  <CardTile
-                    key={card.id}
-                    actions={
-                      <button onClick={() => addRuleCard('summit', card)}>Add to Summit</button>
-                    }
-                  >
-                    <GameCardView card={card} size="small" />
-                  </CardTile>
-                ))}
-              </CardGrid>
-            )}
-          </div>
-        )}
+                {availableEdictCards
+                  .filter((card) =>
+                    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                  )
+                  .length > 0 && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <h3 style={{
+                      marginBottom: '0.75rem',
+                      fontSize: '1.35rem',
+                      fontWeight: 700,
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
+                      paddingBottom: '0.35rem',
+                    }}>
+                      Edicts
+                    </h3>
+                    <CardGrid>
+                      {availableEdictCards
+                        .filter((card) =>
+                          getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                        )
+                        .map((card) => (
+                          <CardTile
+                            key={card.id}
+                            actions={<button
+                              onClick={() => {
+                                playSound('cardMove');
+                                addRuleCard('edicts', card);
+                              }}
+                            >
+                              Add to Edicts
+                            </button>}
+                          >
+                            <CardPicture card={card} />
+                          </CardTile>
+                        ))}
+                    </CardGrid>
+                  </div>
+                )}
 
-        <SectionToggle
-          title="Available Action Cards"
-          isOpen={showAvailableAction}
-          onToggle={() => setShowAvailableAction((prev) => !prev)}
-        />
-        {showAvailableAction && (
-          <div className="subsection">
-            {availableActionCards.length === 0 ? (
-              <p>No available action cards.</p>
-            ) : (
-              <CardGrid>
-                {availableActionCards.map((card) => (
-                  <CardTile
-                    key={card.id}
-                    actions={
-                      <button onClick={() => addActionCardToDeck(card)}>Add to Action Deck</button>
-                    }
-                  >
-                    <GameCardView card={card} size="small" />
-                  </CardTile>
-                ))}
-              </CardGrid>
+                {availableSummitCards
+                  .filter((card) =>
+                    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                  )
+                  .length > 0 && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <h3 style={{
+                      marginBottom: '0.75rem',
+                      fontSize: '1.35rem',
+                      fontWeight: 700,
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
+                      paddingBottom: '0.35rem',
+                    }}>
+                      Summit
+                    </h3>
+                    <CardGrid>
+                      {availableSummitCards
+                        .filter((card) =>
+                          getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                        )
+                        .map((card) => (
+                          <CardTile
+                            key={card.id}
+                            actions={<button
+                              onClick={() => {
+                                playSound('cardMove');
+                                addRuleCard('summit', card);
+                              }}
+                            >
+                              Add to Summit
+                            </button>}
+                          >
+                            <CardPicture card={card} />
+                          </CardTile>
+                        ))}
+                    </CardGrid>
+                  </div>
+                                )}
+
+                {availableFaithfulActionCards
+                  .filter((card) =>
+                    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                  )
+                  .length > 0 && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <h3 style={{
+                      marginBottom: '0.75rem',
+                      fontSize: '1.35rem',
+                      fontWeight: 700,
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
+                      paddingBottom: '0.35rem',
+                    }}>
+                      Faithful Actions
+                    </h3>
+                    <CardGrid>
+                      {availableFaithfulActionCards
+                        .filter((card) =>
+                          getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                        )
+                        .map((card) => (
+                          <CardTile
+                            key={card.id}
+                            actions={
+                              <>
+                                <button
+                                  onClick={() => {
+                                    playSound('cardMove');
+                                    addCourtCardToDeck(card as unknown as CourtCard);
+                                  }}
+                                >
+                                  Add to Court
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    playSound('cardMove');
+                                    addActionCardToDeck(card);
+                                  }}
+                                >
+                                  Add to Action Deck
+                                </button>
+                              </>
+                            }
+                          >
+                            <CardPicture card={card} />
+                          </CardTile>
+                        ))}
+                    </CardGrid>
+                  </div>
+                )}
+
+                {availableActionCards
+                  .filter((card) =>
+                    getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                  )
+                  .length > 0 && (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <h3 style={{
+                      marginBottom: '0.75rem',
+                      fontSize: '1.35rem',
+                      fontWeight: 700,
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
+                      paddingBottom: '0.35rem',
+                    }}>
+                      Events
+                    </h3>
+                    <CardGrid>
+                      {availableActionCards
+                        .filter((card) =>
+                          getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
+                        )
+                        .map((card) => (
+                          <CardTile
+                            key={card.id}
+                            actions={
+                              <button
+                                onClick={() => {
+                                  playSound('cardMove');
+                                  addActionCardToDeck(card);
+                                }}
+                              >
+                                Add to Action Deck
+                              </button>
+                            }
+                          >
+                            <CardPicture card={card} />
+                          </CardTile>
+                        ))}
+                    </CardGrid>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
       </aside>
 
-      <aside className="panel">
+      <aside
+        className="panel"
+        style={{
+          width: '100%',
+          maxWidth: 'none',
+          boxSizing: 'border-box',
+          alignSelf: 'stretch',
+          position: 'relative',
+        }}
+      >
         <h2>Placed Cards</h2>
 
         <SectionToggle
@@ -332,12 +729,26 @@ export default function CardsPanel() {
                     key={card.id}
                     actions={
                       <>
-                        <button onClick={() => scrapCourtCard(card.id)}>Scrap</button>
-                        <button onClick={() => removeCourtCardFromDeck(card.id)}>Remove</button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            scrapCourtCard(card.id);
+                          }}
+                        >
+                          Scrap
+                        </button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            removeCourtCardFromDeck(card.id);
+                          }}
+                        >
+                          Remove
+                        </button>
                       </>
                     }
                   >
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
@@ -361,12 +772,26 @@ export default function CardsPanel() {
                     key={card.id}
                     actions={
                       <>
-                        <button onClick={() => scrapRuleCard('laws', card.id)}>Scrap</button>
-                        <button onClick={() => removeRuleCard('laws', card.id)}>Remove</button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            scrapRuleCard('laws', card.id);
+                          }}
+                        >
+                          Scrap
+                        </button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            removeRuleCard('laws', card.id);
+                          }}
+                        >
+                          Remove
+                        </button>
                       </>
                     }
                   >
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
@@ -390,12 +815,26 @@ export default function CardsPanel() {
                     key={card.id}
                     actions={
                       <>
-                        <button onClick={() => scrapRuleCard('edicts', card.id)}>Scrap</button>
-                        <button onClick={() => removeRuleCard('edicts', card.id)}>Remove</button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            scrapRuleCard('edicts', card.id);
+                          }}
+                        >
+                          Scrap
+                        </button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            removeRuleCard('edicts', card.id);
+                          }}
+                        >
+                          Remove
+                        </button>
                       </>
                     }
                   >
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
@@ -419,22 +858,32 @@ export default function CardsPanel() {
                     key={card.id}
                     actions={
                       <>
-                        <button onClick={() => scrapRuleCard('summit', card.id)}>Scrap</button>
-                        <button onClick={() => removeRuleCard('summit', card.id)}>Remove</button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            scrapRuleCard('summit', card.id);
+                          }}
+                        >
+                          Scrap
+                        </button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            removeRuleCard('summit', card.id);
+                          }}
+                        >
+                          Remove
+                        </button>
                       </>
                     }
                   >
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
             )}
           </div>
         )}
-      </aside>
-
-      <aside className="panel">
-        <h2>Other Zones</h2>
 
         <SectionToggle
           title="Action Deck"
@@ -452,12 +901,26 @@ export default function CardsPanel() {
                     key={card.id}
                     actions={
                       <>
-                        <button onClick={() => scrapActionCard(card.id)}>Scrap</button>
-                        <button onClick={() => removeActionCardFromDeck(card.id)}>Remove</button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            scrapActionCard(card.id);
+                          }}
+                        >
+                          Scrap
+                        </button>
+                        <button
+                          onClick={() => {
+                            playSound('cardMove');
+                            removeActionCardFromDeck(card.id);
+                          }}
+                        >
+                          Remove
+                        </button>
                       </>
                     }
                   >
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
@@ -478,14 +941,16 @@ export default function CardsPanel() {
               <CardGrid>
                 {sortById(scrapPile).map((card) => (
                   <CardTile key={card.id}>
-                    <GameCardView card={card} size="small" />
+                    <CardPicture card={card} />
                   </CardTile>
                 ))}
               </CardGrid>
             )}
           </div>
         )}
+
       </aside>
+
     </section>
   );
 }

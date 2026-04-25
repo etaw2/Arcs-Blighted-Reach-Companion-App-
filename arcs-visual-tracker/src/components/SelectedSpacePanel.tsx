@@ -1,4 +1,5 @@
 import { useGameStore } from '../gameStore';
+import { playSound } from '../utils/sound';
 import type { Building, PlayerColor, ShipColor } from '../gameState';
 
 const shipColors: ShipColor[] = ['blue', 'red', 'yellow', 'white', 'imperial'];
@@ -44,11 +45,15 @@ export default function SelectedSpacePanel() {
   const selectedSpace = useGameStore((state) => state.selectedSpace);
   const map = useGameStore((state) => state.gameState.map);
   const players = useGameStore((state) => state.gameState.players);
+  const gameSetup = useGameStore((state) => state.gameState.gameSetup);
   const clearSelection = useGameStore((state) => state.clearSelection);
   const addShipToGate = useGameStore((state) => state.addShipToGate);
   const removeShipFromGate = useGameStore((state) => state.removeShipFromGate);
   const changeGateBlight = useGameStore((state) => state.changeGateBlight);
   const toggleGateFlagship = useGameStore((state) => state.toggleGateFlagship);
+  const setGatePort = useGameStore((state) => state.setGatePort);
+  const setGateStation = useGameStore((state) => state.setGateStation);
+  const toggleGateStationSeat = useGameStore((state) => state.toggleGateStationSeat);
   const addShipToPlanet = useGameStore((state) => state.addShipToPlanet);
   const removeShipFromPlanet = useGameStore((state) => state.removeShipFromPlanet);
   const changePlanetBlight = useGameStore((state) => state.changePlanetBlight);
@@ -58,11 +63,11 @@ export default function SelectedSpacePanel() {
   const setPlanetPortal = useGameStore((state) => state.setPlanetPortal);
   const setPlanetBanner = useGameStore((state) => state.setPlanetBanner);
   const setPlanetBroken = useGameStore((state) => state.setPlanetBroken);
+  const setPlanetCloudCity = useGameStore((state) => state.setPlanetCloudCity);
+  const setSeatOnCloudCity = useGameStore((state) => state.setSeatOnCloudCity);
   const setSeatOnBuilding = useGameStore((state) => state.setSeatOnBuilding);
 
-  const activeFlagshipColors: PlayerColor[] = players
-    .filter((player) => player.flagship)
-    .map((player) => player.color);
+  const activeFlagshipColors: PlayerColor[] = gameSetup.playersWithFlagships;
 
   if (!selectedSpace) {
     return (
@@ -75,12 +80,13 @@ export default function SelectedSpacePanel() {
 
   if (selectedSpace.kind === 'gate') {
     const gate = map[selectedSpace.clusterId].gate;
+    const gateSeatNumber = Number(selectedSpace.clusterId.replace('cluster', ''));
 
     return (
       <aside className="panel">
         <div className="panel-header">
           <h2>Gate {gate.number}</h2>
-          <button className="ghost-button" onClick={clearSelection}>Close</button>
+          <button className="ghost-button" onClick={() => { playSound('panelClose'); clearSelection(); }}>Close</button>
         </div>
 
         <p>{selectedSpace.clusterId}</p>
@@ -89,15 +95,13 @@ export default function SelectedSpacePanel() {
           <span>
             <img className="space-token-icon" src={blightImage} alt="blight" /> {gate.blight}
           </span>
-          <button onClick={() => changeGateBlight(selectedSpace.clusterId, -1)}>-</button>
-          <button onClick={() => changeGateBlight(selectedSpace.clusterId, 1)}>+</button>
+          <button onClick={() => { if (gate.blight > 0) playSound('tokenRemove'); changeGateBlight(selectedSpace.clusterId, -1); }}>-</button>
+          <button onClick={() => { playSound('blightAdd'); changeGateBlight(selectedSpace.clusterId, 1); }}>+</button>
         </div>
 
-        <div className="subsection">
-          <strong>Flagships</strong>
-          {activeFlagshipColors.length === 0 ? (
-            <p>No active flagships.</p>
-          ) : (
+        {activeFlagshipColors.length > 0 && (
+          <div className="subsection">
+            <strong>Flagships</strong>
             <div className="chip-row">
               {activeFlagshipColors.map((color) => {
                 const isHere = gate.flagships.includes(color);
@@ -117,8 +121,100 @@ export default function SelectedSpacePanel() {
                 );
               })}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {gameSetup.optionalStructures.gatePorts && (
+          <div className="subsection">
+            <strong>Gate Port</strong>
+
+            {gate.port === null ? (
+              <>
+                <p>One starport may be placed on this gate.</p>
+                <div className="chip-row">
+                  {playerColors.map((color) => (
+                    <button
+                      key={`gate-port-${color}`}
+                      onClick={() => { playSound('buildingAdd'); setGatePort(selectedSpace.clusterId, color); }}
+                    >
+                      <img
+                        className="space-token-icon"
+                        src={starportImageByColor[color]}
+                        alt={`${color} gate port`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="list-row">
+                <span>
+                  <img
+                    className="space-token-icon"
+                    src={starportImageByColor[gate.port.color as PlayerColor]}
+                    alt={`${gate.port.color} gate port`}
+                  />
+                  Gate Port
+                </span>
+
+                <button onClick={() => { playSound('tokenRemove'); setGatePort(selectedSpace.clusterId, null); }}>
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {gameSetup.optionalStructures.gateStations && (
+          <div className="subsection">
+            <strong>Gate Station</strong>
+
+            {gate.station === null ? (
+              <>
+                <p>One city may be placed on this gate.</p>
+                <div className="chip-row">
+                  {playerColors.map((color) => (
+                    <button
+                      key={`gate-station-${color}`}
+                      onClick={() => { playSound('buildingAdd'); setGateStation(selectedSpace.clusterId, color); }}
+                    >
+                      <img
+                        className="space-token-icon"
+                        src={cityImageByColor[color]}
+                        alt={`${color} gate station`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="list-row">
+                <span>
+                  <img
+                    className="space-token-icon"
+                    src={cityImageByColor[gate.station.color as PlayerColor]}
+                    alt={`${gate.station.color} gate station`}
+                  />
+                  Gate Station{gate.station.seat ? ` · Seat ${gate.station.seatNumber}` : ''}
+                </span>
+
+                <div className="chip-row">
+                  <button
+                    onClick={() => { playSound(gate.station?.seat ? 'tokenRemove' : 'seatAdd'); toggleGateStationSeat(selectedSpace.clusterId, !gate.station?.seat); }}
+                  >
+                    {gate.station.seat
+                      ? `Remove Seat ${gateSeatNumber}`
+                      : `Add Seat ${gateSeatNumber}`}
+                  </button>
+
+                  <button onClick={() => { playSound('tokenRemove'); setGateStation(selectedSpace.clusterId, null); }}>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="subsection">
           <strong>Ships</strong>
@@ -140,13 +236,14 @@ export default function SelectedSpacePanel() {
                     onClick={() => {
                       const indexToRemove = gate.ships.findIndex((ship) => ship.color === color);
                       if (indexToRemove !== -1) {
+                        playSound('tokenRemove');
                         removeShipFromGate(selectedSpace.clusterId, indexToRemove);
                       }
                     }}
                   >
                     -
                   </button>
-                  <button onClick={() => addShipToGate(selectedSpace.clusterId, color)}>
+                  <button onClick={() => { playSound('shipAdd'); addShipToGate(selectedSpace.clusterId, color); }}>
                     +
                   </button>
                 </div>
@@ -169,6 +266,7 @@ export default function SelectedSpacePanel() {
       seatNumber: null,
     };
 
+    playSound('buildingAdd');
     addBuildingToPlanet(selectedSpace.clusterId, selectedSpace.planetKey, building);
   };
 
@@ -180,35 +278,35 @@ export default function SelectedSpacePanel() {
       seatNumber: null,
     };
 
+    playSound('buildingAdd');
     addBuildingToPlanet(selectedSpace.clusterId, selectedSpace.planetKey, building);
   };
 
   return (
     <aside className="panel">
       <div className="panel-header">
-        <h2>{planet.id}</h2>
-        <button className="ghost-button" onClick={clearSelection}>Close</button>
+        <h2>
+  Cluster {selectedSpace.clusterId.replace('cluster', '')} Planet{' '}
+  {planet.id.split('_')[1]}
+</h2>
+        <button className="ghost-button" onClick={() => { playSound('panelClose'); clearSelection(); }}>Close</button>
       </div>
-
-      <p>{selectedSpace.clusterId} · {planet.slot} · {planet.resource}</p>
 
       <div className="counter-row">
         <span>
           <img className="space-token-icon" src={blightImage} alt="blight" /> {planet.blight}
         </span>
-        <button onClick={() => changePlanetBlight(selectedSpace.clusterId, selectedSpace.planetKey, -1)}>
+        <button onClick={() => { if (planet.blight > 0) playSound('tokenRemove'); changePlanetBlight(selectedSpace.clusterId, selectedSpace.planetKey, -1); }}>
           -
         </button>
-        <button onClick={() => changePlanetBlight(selectedSpace.clusterId, selectedSpace.planetKey, 1)}>
+        <button onClick={() => { playSound('blightAdd'); changePlanetBlight(selectedSpace.clusterId, selectedSpace.planetKey, 1); }}>
           +
         </button>
       </div>
 
-      <div className="subsection">
-        <strong>Flagships</strong>
-        {activeFlagshipColors.length === 0 ? (
-          <p>No active flagships.</p>
-        ) : (
+      {activeFlagshipColors.length > 0 && (
+        <div className="subsection">
+          <strong>Flagships</strong>
           <div className="chip-row">
             {activeFlagshipColors.map((color) => {
               const isHere = planet.flagships.includes(color);
@@ -230,38 +328,102 @@ export default function SelectedSpacePanel() {
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className="counter-row">
-        <span>
-          <img className="space-token-icon" src={portalImage} alt="portal" />{' '}
-          {planet.portal ? 'Yes' : 'No'}
-        </span>
-        <button onClick={() => setPlanetPortal(selectedSpace.clusterId, selectedSpace.planetKey, !planet.portal)}>
-          Toggle
-        </button>
-      </div>
+      {gameSetup.optionalTokens.pathfindersPortal && (
+        <div className="counter-row">
+          <span>
+            <img className="space-token-icon" src={portalImage} alt="portal" />{' '}
+            {planet.portal ? 'Yes' : 'No'}
+          </span>
+          <button onClick={() => { playSound(planet.portal ? 'tokenRemove' : 'portalAdd'); setPlanetPortal(selectedSpace.clusterId, selectedSpace.planetKey, !planet.portal); }}>
+            Toggle
+          </button>
+        </div>
+      )}
 
-      <div className="counter-row">
-        <span>
-          <img className="space-token-icon" src={bannerImage} alt="banner" />{' '}
-          {planet.banner ? 'Yes' : 'No'}
-        </span>
-        <button onClick={() => setPlanetBanner(selectedSpace.clusterId, selectedSpace.planetKey, !planet.banner)}>
-          Toggle
-        </button>
-      </div>
+      {gameSetup.optionalTokens.hegemonsBanner && (
+        <div className="counter-row">
+          <span>
+            <img className="space-token-icon" src={bannerImage} alt="banner" />{' '}
+            {planet.banner ? 'Yes' : 'No'}
+          </span>
+          <button onClick={() => { playSound(planet.banner ? 'tokenRemove' : 'bannerAdd'); setPlanetBanner(selectedSpace.clusterId, selectedSpace.planetKey, !planet.banner); }}>
+            Toggle
+          </button>
+        </div>
+      )}
 
-      <div className="counter-row">
-        <span>
-          <img className="space-token-icon" src={brokenImage} alt="broken" />{' '}
-          {planet.broken ? 'Yes' : 'No'}
-        </span>
-        <button onClick={() => setPlanetBroken(selectedSpace.clusterId, selectedSpace.planetKey, !planet.broken)}>
-          Toggle
-        </button>
-      </div>
+      {gameSetup.optionalTokens.planetBreakersBroken && (
+        <div className="counter-row">
+          <span>
+            <img className="space-token-icon" src={brokenImage} alt="broken" />{' '}
+            {planet.broken ? 'Yes' : 'No'}
+          </span>
+          <button onClick={() => { playSound(planet.broken ? 'tokenRemove' : 'brokenAdd'); setPlanetBroken(selectedSpace.clusterId, selectedSpace.planetKey, !planet.broken); }}>
+            Toggle
+          </button>
+        </div>
+      )}
+
+      {gameSetup.optionalStructures.cloudCities && (
+        <div className="subsection">
+          <strong>Cloud City</strong>
+
+          {planet.cloudCity === null ? (
+            <>
+              <p>One cloud city may be placed in this planet system.</p>
+              <div className="chip-row">
+                {playerColors.map((color) => (
+                  <button
+                    key={`cloud-city-${color}`}
+                    onClick={() => { playSound('buildingAdd'); setPlanetCloudCity(selectedSpace.clusterId, selectedSpace.planetKey, color); }}
+                  >
+                    <img
+                      className="space-token-icon"
+                      src={cityImageByColor[color]}
+                      alt={`${color} cloud city`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="list-row">
+              <span>
+  <img
+    className="space-token-icon"
+    src={cityImageByColor[planet.cloudCity.color]}
+    alt={`${planet.cloudCity.color} cloud city`}
+  />
+</span>
+
+              <div className="chip-row">
+                {gameSetup.optionalTokens.foundersSeatTokens && (
+  <button
+    onClick={() => { playSound(planet.cloudCity?.seat ? 'tokenRemove' : 'seatAdd'); setSeatOnCloudCity(
+        selectedSpace.clusterId,
+        selectedSpace.planetKey,
+        !planet.cloudCity?.seat
+      ); }}
+  >
+    {planet.cloudCity.seat
+      ? `Remove Seat ${seatNumber}`
+      : `Add Seat ${seatNumber}`}
+  </button>
+)}
+
+                <button
+                  onClick={() => { playSound('tokenRemove'); setPlanetCloudCity(selectedSpace.clusterId, selectedSpace.planetKey, null); }}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="subsection">
         <strong>Ships</strong>
@@ -283,6 +445,7 @@ export default function SelectedSpacePanel() {
                   onClick={() => {
                     const indexToRemove = planet.ships.findIndex((ship) => ship.color === color);
                     if (indexToRemove !== -1) {
+                      playSound('tokenRemove');
                       removeShipFromPlanet(selectedSpace.clusterId, selectedSpace.planetKey, indexToRemove);
                     }
                   }}
@@ -290,7 +453,7 @@ export default function SelectedSpacePanel() {
                   -
                 </button>
                 <button
-                  onClick={() => addShipToPlanet(selectedSpace.clusterId, selectedSpace.planetKey, color)}
+                  onClick={() => { playSound('shipAdd'); addShipToPlanet(selectedSpace.clusterId, selectedSpace.planetKey, color); }}
                 >
                   +
                 </button>
@@ -324,40 +487,44 @@ export default function SelectedSpacePanel() {
         </div>
 
         <div style={{ marginBottom: '0.75rem' }}>
-          <strong>Add city from player supply</strong>
-          <div className="chip-row">
-            {playerColors.map((color) => (
-              <button
-                key={`city-${color}`}
-                onClick={() => addOwnedBuilding('city', color)}
-              >
-                <img
-                  className="space-token-icon"
-                  src={cityImageByColor[color]}
-                  alt={`${color} city`}
-                />
-              </button>
-            ))}
-          </div>
-        </div>
+  <strong>Add city from player supply</strong>
+  <div className="chip-row">
+    {playerColors
+      .filter((color) => !activeFlagshipColors.includes(color))
+      .map((color) => (
+        <button
+          key={`city-${color}`}
+          onClick={() => addOwnedBuilding('city', color)}
+        >
+          <img
+            className="space-token-icon"
+            src={cityImageByColor[color]}
+            alt={`${color} city`}
+          />
+        </button>
+      ))}
+  </div>
+</div>
 
         <div style={{ marginBottom: '0.75rem' }}>
-          <strong>Add starport from player supply</strong>
-          <div className="chip-row">
-            {playerColors.map((color) => (
-              <button
-                key={`starport-${color}`}
-                onClick={() => addOwnedBuilding('starport', color)}
-              >
-                <img
-                  className="space-token-icon"
-                  src={starportImageByColor[color]}
-                  alt={`${color} starport`}
-                />
-              </button>
-            ))}
-          </div>
-        </div>
+  <strong>Add starport from player supply</strong>
+  <div className="chip-row">
+    {playerColors
+      .filter((color) => !activeFlagshipColors.includes(color))
+      .map((color) => (
+        <button
+          key={`starport-${color}`}
+          onClick={() => addOwnedBuilding('starport', color)}
+        >
+          <img
+            className="space-token-icon"
+            src={starportImageByColor[color]}
+            alt={`${color} starport`}
+          />
+        </button>
+      ))}
+  </div>
+</div>
 
         {planet.buildings.length === 0 ? (
           <p>No buildings.</p>
@@ -374,26 +541,25 @@ export default function SelectedSpacePanel() {
                   }
                   alt={`${building.color} ${building.type}`}
                 />
-                {building.seat ? ` · Seat ${building.seatNumber}` : ''}
               </span>
 
               <div className="chip-row">
-                {building.type === 'city' && building.color !== 'free' && (
+                {gameSetup.optionalTokens.foundersSeatTokens &&
+  building.type === 'city' &&
+  building.color !== 'free' && (
                   <button
-                    onClick={() =>
-                      setSeatOnBuilding(
+                    onClick={() => { playSound(building.seat ? 'tokenRemove' : 'seatAdd'); setSeatOnBuilding(
                         selectedSpace.clusterId,
                         selectedSpace.planetKey,
                         index,
                         !building.seat
-                      )
-                    }
+                      ); }}
                   >
                     {building.seat ? `Remove Seat ${seatNumber}` : `Add Seat ${seatNumber}`}
                   </button>
                 )}
 
-                <button onClick={() => removeBuildingFromPlanet(selectedSpace.clusterId, selectedSpace.planetKey, index)}>
+                <button onClick={() => { playSound('tokenRemove'); removeBuildingFromPlanet(selectedSpace.clusterId, selectedSpace.planetKey, index); }}>
                   Remove
                 </button>
               </div>

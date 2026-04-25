@@ -5,6 +5,8 @@ import PlayerBoards from './components/PlayerBoards';
 import SelectedSpacePanel from './components/SelectedSpacePanel';
 import { useGameStore } from './gameStore';
 import { createEmptyPlayer, type GameSetup, type PlayerColor } from './gameState';
+import { BackgroundMusic } from './components/BackgroundMusic';
+import { getSoundEffectsMuted, setSoundEffectsMuted } from './utils/sound';
 
 const allPlayerColors: PlayerColor[] = ['blue', 'red', 'yellow', 'white'];
 
@@ -17,6 +19,7 @@ export default function App() {
   const setSetupComplete = useGameStore((state) => state.setSetupComplete);
 
   const [localSetup, setLocalSetup] = useState<GameSetup>(gameSetup);
+  const [sfxMuted, setSfxMuted] = useState(getSoundEffectsMuted);
 
   useEffect(() => {
     if (players.length === 0) {
@@ -35,7 +38,13 @@ export default function App() {
 
   const togglePlayer = (color: PlayerColor) => {
     setLocalSetup((prev) => {
-      const playersInGame = prev.playersInGame.includes(color)
+      const isRemoving = prev.playersInGame.includes(color);
+
+      if (isRemoving && prev.playersInGame.length <= 2) {
+        return prev;
+      }
+
+      const playersInGame = isRemoving
         ? prev.playersInGame.filter((c) => c !== color)
         : [...prev.playersInGame, color];
 
@@ -78,7 +87,18 @@ export default function App() {
     }));
   };
 
+  const toggleSfxMuted = () => {
+    const nextMuted = !sfxMuted;
+
+    setSoundEffectsMuted(nextMuted);
+    setSfxMuted(nextMuted);
+  };
+
   const handleConfirmSetup = () => {
+    if (localSetup.playersInGame.length < 2) {
+      return;
+    }
+
     updateGameSetup({
       ...localSetup,
       setupComplete: true,
@@ -95,6 +115,7 @@ export default function App() {
 
             <div className="setup-section">
               <strong>Players in Game</strong>
+              <p>Choose at least 2 players.</p>
               <div className="chip-row">
                 {allPlayerColors.map((color) => (
                   <button
@@ -150,6 +171,14 @@ export default function App() {
                 >
                   Planet Breaker&apos;s Broken
                 </button>
+                <button
+                  className={
+                    localSetup.optionalTokens.foundersSeatTokens ? 'selected-chip' : ''
+                  }
+                  onClick={() => toggleToken('foundersSeatTokens')}
+                >
+                  Founder&apos;s Seat Tokens
+                </button>
               </div>
             </div>
 
@@ -177,7 +206,11 @@ export default function App() {
               </div>
             </div>
 
-            <button className="reset-button" onClick={handleConfirmSetup}>
+            <button
+              className="reset-button"
+              onClick={handleConfirmSetup}
+              disabled={localSetup.playersInGame.length < 2}
+            >
               Start Game
             </button>
           </div>
@@ -190,7 +223,13 @@ export default function App() {
             <h1>Arcs Visual Tracker</h1>
             <p>Click the board spaces to edit gates and planets. Player boards are editable below.</p>
           </div>
-          <button className="reset-button" onClick={resetGame}>Reset game</button>
+          <div className="topbar-actions">
+            <BackgroundMusic />
+            <button className="music-button" onClick={toggleSfxMuted}>
+  {sfxMuted ? 'Unmute SFX' : 'Mute SFX'}
+</button>
+            <button className="reset-button" onClick={resetGame}>Reset game</button>
+          </div>
         </header>
 
         <section className="main-layout">
