@@ -35,13 +35,23 @@ export async function downloadSaveFile(saveFile: GameSaveFile, fileName: string)
 
 export async function readSaveFileFromInput(file: File): Promise<GameSaveFile> {
   const text = await file.text();
-  const parsed = JSON.parse(text) as GameSaveFile;
+  const parsed = JSON.parse(text) as Partial<GameSaveFile>;
 
-  if (!parsed || parsed.version !== 1 || !parsed.savedAt || !parsed.data) {
+  if (!parsed || parsed.version !== 1 || !parsed.data) {
     throw new Error('Invalid Arcs save file.');
   }
 
-  return parsed;
+  const fallbackDate = parsed.savedAt ?? parsed.updatedAt ?? new Date().toISOString();
+  const fallbackName = file.name.replace(/\.json$/i, '') || 'arcs-campaign-save';
+
+  return {
+    version: 1,
+    saveName: parsed.saveName ?? fallbackName,
+    createdAt: parsed.createdAt ?? fallbackDate,
+    updatedAt: parsed.updatedAt ?? fallbackDate,
+    savedAt: parsed.savedAt ?? fallbackDate,
+    data: parsed.data,
+  };
 }
 
 export async function deleteSaveFile(): Promise<DeleteSaveFileResult> {

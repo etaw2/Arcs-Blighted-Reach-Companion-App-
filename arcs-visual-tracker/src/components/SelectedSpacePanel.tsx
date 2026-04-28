@@ -110,7 +110,7 @@ export default function SelectedSpacePanel() {
                   <button
                     key={color}
                     className={isHere ? 'selected-chip' : ''}
-                    onClick={() => toggleGateFlagship(selectedSpace.clusterId, color)}
+                    onClick={() => { playSound(isHere ? 'tokenRemove' : 'shipAdd'); toggleGateFlagship(selectedSpace.clusterId, color); }}
                   >
                     <img
                       className="space-token-icon"
@@ -315,9 +315,7 @@ export default function SelectedSpacePanel() {
                 <button
                   key={color}
                   className={isHere ? 'selected-chip' : ''}
-                  onClick={() =>
-                    togglePlanetFlagship(selectedSpace.clusterId, selectedSpace.planetKey, color)
-                  }
+                  onClick={() => { playSound(isHere ? 'tokenRemove' : 'shipAdd'); togglePlanetFlagship(selectedSpace.clusterId, selectedSpace.planetKey, color); }}
                 >
                   <img
                     className="space-token-icon"

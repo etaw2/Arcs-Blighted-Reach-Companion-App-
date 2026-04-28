@@ -221,8 +221,11 @@ export interface GolemInventory {
   harvester: boolean;
 }
 
+export type CampaignAct = 'actII' | 'actIII';
+
 export interface GameSetup {
   setupComplete: boolean;
+  campaignAct: CampaignAct;
   playersInGame: PlayerColor[];
   playersWithFlagships: PlayerColor[];
   optionalTokens: {
@@ -241,6 +244,7 @@ export interface GameSetup {
 
 export interface PlayerState {
   color: PlayerColor;
+  name: string;
   fate: string | null;
   power: number;
   initiative: boolean;
@@ -274,6 +278,9 @@ export interface GameState {
 
 export interface GameSaveFile {
   version: 1;
+  saveName: string;
+  createdAt: string;
+  updatedAt: string;
   savedAt: string;
   data: GameState;
 }
@@ -388,6 +395,7 @@ export const createEmptyFlagshipBoard = (): FlagshipBoardState => ({
 
 export const defaultGameSetup: GameSetup = {
   setupComplete: false,
+  campaignAct: 'actII',
   playersInGame: ['blue', 'red', 'yellow', 'white'],
   playersWithFlagships: [],
   optionalTokens: {
@@ -418,6 +426,7 @@ export const initialGameState: GameState = {
 
 export const createEmptyPlayer = (color: PlayerColor): PlayerState => ({
   color,
+  name: '',
   fate: null,
   power: 0,
   initiative: false,
@@ -473,12 +482,21 @@ export const createInitialGameState = (gameNumber: SaveGameNumber = 1): GameStat
   gameSetup: structuredClone(defaultGameSetup),
 });
 
-export const createGameSaveFile = (state: GameState): GameSaveFile => ({
-  version: 1,
-  savedAt: new Date().toISOString(),
-  data: state,
-});
+export const createGameSaveFile = (
+  state: GameState,
+  saveName = 'arcs-campaign-save'
+): GameSaveFile => {
+  const now = new Date().toISOString();
 
+  return {
+    version: 1,
+    saveName,
+    createdAt: now,
+    updatedAt: now,
+    savedAt: now,
+    data: state,
+  };
+};
 export const playerBoardImageByColor: Record<PlayerColor, string> = {
   blue: '/assets/blue-player-board.png',
   red: '/assets/red-player-board.png',

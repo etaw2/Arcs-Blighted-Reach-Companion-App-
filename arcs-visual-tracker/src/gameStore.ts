@@ -7,6 +7,7 @@ import {
   type FlagshipBoardSlotType,
   type FlagshipUpgradeId,
   type CourtCard,
+  type GameSaveFile,
   type GameSetup,
   type GameState,
   type PlanetKey,
@@ -20,6 +21,7 @@ import {
   type SaveGameNumber,
   type ShipColor,
   createEmptyFlagshipBoard,
+  createGameSaveFile,
   createInitialGameState,
   defaultGameSetup,
 } from './gameState';
@@ -40,11 +42,9 @@ const applyInitiativeRules = (players: PlayerState[]): PlayerState[] => {
   return players;
 };
 
-const getClusterSeatNumber = (clusterId: ClusterId): number =>
-  Number(clusterId.replace('cluster', ''));
-
 const normalizeGameSetup = (gameSetup?: Partial<GameSetup>): GameSetup => ({
   setupComplete: gameSetup?.setupComplete ?? defaultGameSetup.setupComplete,
+  campaignAct: gameSetup?.campaignAct ?? defaultGameSetup.campaignAct,
   playersInGame: gameSetup?.playersInGame ?? defaultGameSetup.playersInGame,
   playersWithFlagships:
     gameSetup?.playersWithFlagships ?? defaultGameSetup.playersWithFlagships,
@@ -122,6 +122,7 @@ const clearSeatsFromMap = (map: GameState['map']): GameState['map'] =>
       },
     ])
   ) as GameState['map'];
+  
 
 const removeFlagshipColorFromMap = (
   map: GameState['map'],
@@ -252,6 +253,8 @@ interface GameStore {
 
   resetGame: () => void;
   setGameState: (gameState: GameState) => void;
+  exportGameSaveFile: (saveName?: string) => GameSaveFile;
+  importGameSaveFile: (saveFile: GameSaveFile) => void;
   setGameNumber: (gameNumber: SaveGameNumber) => void;
   updateGameSetup: (updates: Partial<GameSetup>) => void;
   setSetupComplete: (setupComplete: boolean) => void;
@@ -295,8 +298,10 @@ interface GameStore {
   addActionCardToDeck: (card: ActionCard) => void;
   removeActionCardFromDeck: (cardId: string) => void;
   scrapActionCard: (cardId: string) => void;
+  removeCardFromScrapPile: (cardId: string) => void;
   addPlayerCardToPlayer: (color: PlayerColor, card: PlayerBoardCard) => void;
   removePlayerCardFromPlayer: (color: PlayerColor, cardId: string) => void;
+  scrapPlayerCardFromPlayer: (color: PlayerColor, cardId: string) => void;
 
   addPlayer: (player: PlayerState) => void;
   removePlayer: (color: PlayerColor) => void;
@@ -330,6 +335,21 @@ export const useGameStore = create<GameStore>((set) => ({
         ...gameState,
         gameSetup: normalizeGameSetup(gameState.gameSetup),
       },
+    }),
+
+exportGameSaveFile: (saveName) => {
+  const state = useGameStore.getState();
+
+  return createGameSaveFile(state.gameState, saveName);
+},
+
+  importGameSaveFile: (saveFile) =>
+    set({
+      gameState: {
+        ...saveFile.data,
+        gameSetup: normalizeGameSetup(saveFile.data.gameSetup),
+      },
+      selectedSpace: null,
     }),
 
   setGameNumber: (gameNumber) =>
@@ -1516,6 +1536,17 @@ export const useGameStore = create<GameStore>((set) => ({
       };
     }),
 
+  removeCardFromScrapPile: (cardId) =>
+    set((state) => ({
+      gameState: {
+        ...state.gameState,
+        scrapPile: {
+          ...state.gameState.scrapPile,
+          scrap: state.gameState.scrapPile.scrap.filter((card) => card.id !== cardId),
+        },
+      },
+    })),
+
   addPlayerCardToPlayer: (color, card) =>
     set((state) => {
       const owningPlayer = state.gameState.players.find((player) =>
@@ -1578,6 +1609,34 @@ export const useGameStore = create<GameStore>((set) => ({
           playerCardPool: {
             ...playerCardPool,
             available: nextAvailable,
+          },
+          players: state.gameState.players.map((entry) =>
+            entry.color === color
+              ? {
+                  ...entry,
+                  cards: (entry.cards ?? []).filter((playerCard) => playerCard.id !== cardId),
+                }
+              : entry
+          ),
+        },
+      };
+    }),
+
+  scrapPlayerCardFromPlayer: (color, cardId) =>
+    set((state) => {
+      const player = state.gameState.players.find((entry) => entry.color === color);
+      const card = player?.cards?.find((entry) => entry.id === cardId);
+
+      if (!player || !card) {
+        return state;
+      }
+
+      return {
+        gameState: {
+          ...state.gameState,
+          scrapPile: {
+            ...state.gameState.scrapPile,
+            scrap: [...state.gameState.scrapPile.scrap, card],
           },
           players: state.gameState.players.map((entry) =>
             entry.color === color

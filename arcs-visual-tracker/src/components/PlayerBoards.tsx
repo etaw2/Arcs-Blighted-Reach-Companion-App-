@@ -121,6 +121,7 @@ export default function PlayerBoards() {
   const updatePlayer = useGameStore((state) => state.updatePlayer);
   const updatePlayerResources = useGameStore((state) => state.updatePlayerResources);
   const removePlayerCardFromPlayer = useGameStore((state) => state.removePlayerCardFromPlayer);
+  const scrapPlayerCardFromPlayer = useGameStore((state) => state.scrapPlayerCardFromPlayer);
   const setInitiative = useGameStore((state) => state.setInitiative);
   const placeFlagshipBoardBuilding = useGameStore(
     (state) => state.placeFlagshipBoardBuilding
@@ -282,6 +283,8 @@ export default function PlayerBoards() {
                             } ${slot.slotType}`}
                             onClick={() => {
                               if (placedBuilding) {
+                                playSound('tokenRemove');
+
                                 removeFlagshipBoardBuilding(
                                   color,
                                   slot.upgradeId,
@@ -293,6 +296,8 @@ export default function PlayerBoards() {
                               if (!selectedBuilding || !armorIsUnlocked) {
                                 return;
                               }
+
+                              playSound('buildingAdd');
 
                               placeFlagshipBoardBuilding(
                                 color,
@@ -375,10 +380,16 @@ export default function PlayerBoards() {
                               : ''
                           }
                           onClick={() =>
-                            setSelectedFlagshipBuilding((prev) => ({
-                              ...prev,
-                              [color]: prev[color] === 'city' ? undefined : 'city',
-                            }))
+                            setSelectedFlagshipBuilding((prev) => {
+                              const isTurningOff = prev[color] === 'city';
+
+                              playSound(isTurningOff ? 'panelClose' : 'panelOpen');
+
+                              return {
+                                ...prev,
+                                [color]: isTurningOff ? undefined : 'city',
+                              };
+                            })
                           }
                           disabled={player.cities <= 0}
                         >
@@ -392,11 +403,16 @@ export default function PlayerBoards() {
                               : ''
                           }
                           onClick={() =>
-                            setSelectedFlagshipBuilding((prev) => ({
-                              ...prev,
-                              [color]:
-                                prev[color] === 'starport' ? undefined : 'starport',
-                            }))
+                            setSelectedFlagshipBuilding((prev) => {
+                              const isTurningOff = prev[color] === 'starport';
+
+                              playSound(isTurningOff ? 'panelClose' : 'panelOpen');
+
+                              return {
+                                ...prev,
+                                [color]: isTurningOff ? undefined : 'starport',
+                              };
+                            })
                           }
                           disabled={player.starports <= 0}
                         >
@@ -405,7 +421,20 @@ export default function PlayerBoards() {
                       </div>
                     </div>
                   )}
-
+<div className="inline-controls grow">
+  <label>Player</label>
+  <input
+    type="text"
+    value={player.name ?? ''}
+    onChange={(event) => updatePlayer(color, { name: event.target.value })}
+    placeholder="Player name"
+    style={{
+      minWidth: '10rem',
+      maxWidth: '14rem',
+      textAlign: 'center',
+    }}
+  />
+</div>
                   <div className="inline-controls">
                     <label>Power</label>
                     <input
@@ -491,28 +520,28 @@ export default function PlayerBoards() {
                     </select>
                   </div>
 
-                  <div className="subsection">
-                    <strong>Favors</strong>
-                    <div className="resource-grid">
-                      {playerColors
-                        .filter((favorColor) => favorColor !== color)
-                        .filter((favorColor) => activePlayerColors.includes(favorColor))
-                        .map((favorColor) => (
-                          <div className="resource-box" key={favorColor}>
-                            <img
-                              className="favor-icon"
-                              src={favorImageByColor[favorColor]}
-                              alt={`${favorColor} favor`}
-                            />
-                            <div>
-                              <button onClick={() => changeFavor(favorColor, -1)}>-</button>
-                              <strong>{player.favors[favorColor]}</strong>
-                              <button onClick={() => changeFavor(favorColor, 1)}>+</button>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
+                <div className="subsection">
+  <strong>Favors</strong>
+  <div className="favor-grid">
+    {playerColors
+      .filter((favorColor) => favorColor !== color)
+      .filter((favorColor) => activePlayerColors.includes(favorColor))
+      .map((favorColor) => (
+        <div className="resource-box" key={favorColor}>
+          <img
+            className="favor-icon"
+            src={favorImageByColor[favorColor]}
+            alt={`${favorColor} favor`}
+          />
+          <div>
+            <button onClick={() => changeFavor(favorColor, -1)}>-</button>
+            <strong>{player.favors[favorColor]}</strong>
+            <button onClick={() => changeFavor(favorColor, 1)}>+</button>
+          </div>
+        </div>
+      ))}
+  </div>
+</div>
 
                   <div className="subsection">
                     <strong>Player Cards</strong>
@@ -542,13 +571,22 @@ export default function PlayerBoards() {
                               <GameCardView card={card} size="small" />
                             </div>
                             <button
-                              onClick={() => {
-                                playSound('cardMove');
-                                removePlayerCardFromPlayer(color, card.id);
-                              }}
-                            >
-                              Remove
-                            </button>
+  onClick={() => {
+    playSound('cardMove');
+    scrapPlayerCardFromPlayer(color, card.id);
+  }}
+>
+  Scrap
+</button>
+
+<button
+  onClick={() => {
+    playSound('cardMove');
+    removePlayerCardFromPlayer(color, card.id);
+  }}
+>
+  Remove
+</button>
                           </div>
                         ))}
                       </div>
@@ -585,32 +623,43 @@ export default function PlayerBoards() {
                     </div>
                   </div>
 
-                  <div className="inline-controls">
-                    <img
-                      className="player-piece-icon"
-                      src={shipImageByColor[color]}
-                      alt={`${color} ship`}
-                    />
-                    <span>{player.ships}</span>
-                  </div>
+                  <div
+  style={{
+    display: 'flex',
+    flexDirection: 'row',
+    gap: '0.75rem',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  }}
+>
+  <div className="inline-controls">
+    <img
+      className="player-piece-icon"
+      src={shipImageByColor[color]}
+      alt={`${color} ship`}
+    />
+    <span>{player.ships}</span>
+  </div>
 
-                  <div className="inline-controls">
-                    <img
-                      className="player-piece-icon"
-                      src={cityImageByColor[color]}
-                      alt={`${color} city`}
-                    />
-                    <span>{player.cities}</span>
-                  </div>
+  <div className="inline-controls">
+    <img
+      className="player-piece-icon"
+      src={cityImageByColor[color]}
+      alt={`${color} city`}
+    />
+    <span>{player.cities}</span>
+  </div>
 
-                  <div className="inline-controls">
-                    <img
-                      className="player-piece-icon"
-                      src={starportImageByColor[color]}
-                      alt={`${color} starport`}
-                    />
-                    <span>{player.starports}</span>
-                  </div>
+  <div className="inline-controls">
+    <img
+      className="player-piece-icon"
+      src={starportImageByColor[color]}
+      alt={`${color} starport`}
+    />
+    <span>{player.starports}</span>
+  </div>
+</div>
 
                   <div className="subsection">
                     <strong>Resources</strong>
@@ -642,27 +691,27 @@ export default function PlayerBoards() {
                     </div>
                   </div>
 
-                  {gameSetup.optionalTokens.caretakersGolems && (
-                    <div className="subsection">
-                      <strong>Golems</strong>
-                      <div className="resource-grid">
-                        {golemTypes.map((golemType) => (
-                          <div className="resource-box" key={golemType}>
-                            <img
-                              className="resource-icon"
-                              src={golemImageByType[golemType]}
-                              alt={golemType}
-                            />
-                            <div>
-                              <button onClick={() => toggleGolem(golemType)}>
-                                {player.golems[golemType] ? 'On' : 'Off'}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                 {gameSetup.optionalTokens.caretakersGolems && (
+  <div className="subsection">
+    <strong>Golems</strong>
+    <div className="golem-grid">
+      {golemTypes.map((golemType) => (
+        <div className="golem-box" key={golemType}>
+          <img
+            className="resource-icon"
+            src={golemImageByType[golemType]}
+            alt={golemType}
+          />
+          <div>
+            <button onClick={() => toggleGolem(golemType)}>
+              {player.golems[golemType] ? 'On' : 'Off'}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
                   <div>
                     <strong>Outrage</strong>

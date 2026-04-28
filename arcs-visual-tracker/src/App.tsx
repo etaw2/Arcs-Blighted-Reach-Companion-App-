@@ -6,7 +6,13 @@ import SelectedSpacePanel from './components/SelectedSpacePanel';
 import { useGameStore } from './gameStore';
 import { createEmptyPlayer, type GameSetup, type PlayerColor } from './gameState';
 import { BackgroundMusic } from './components/BackgroundMusic';
-import { getSoundEffectsMuted, playSound, setSoundEffectsMuted } from './utils/sound';
+import {
+  getMusicVolume,
+  getSfxVolume,
+  playSound,
+  setMusicVolume,
+  setSfxVolume,
+} from './utils/sound';
 import {
   createSaveFileName,
   deleteSaveFile,
@@ -88,21 +94,24 @@ export default function App() {
   const importGameSaveFile = useGameStore((state) => state.importGameSaveFile);
 
   const [localSetup, setLocalSetup] = useState<GameSetup>(gameSetup);
-  const [sfxMuted, setSfxMuted] = useState(getSoundEffectsMuted);
   const [showTitleScreen, setShowTitleScreen] = useState(true);
+  const [soundSettingsOpen, setSoundSettingsOpen] = useState(false);
+  const [musicVolume, setMusicVolumeState] = useState(getMusicVolume);
+  const [sfxVolume, setSfxVolumeState] = useState(getSfxVolume);
 
   const titleMusicRef = useRef<HTMLAudioElement | null>(null);
   const openSaveInputRef = useRef<HTMLInputElement | null>(null);
 
   const startTitleMusic = () => {
     if (titleMusicRef.current) {
+      titleMusicRef.current.volume = getMusicVolume();
       titleMusicRef.current.play().catch(() => {});
       return;
     }
 
     const audio = new Audio('/assets/music/title.mp3');
     audio.loop = true;
-    audio.volume = 0.45;
+    audio.volume = getMusicVolume();
     titleMusicRef.current = audio;
 
     audio.play().catch(() => {});
@@ -135,14 +144,52 @@ export default function App() {
     }
   }, [showTitleScreen, gameSetup.setupComplete]);
 
+  useEffect(() => {
+    if (!titleMusicRef.current) {
+      return;
+    }
+
+    titleMusicRef.current.volume = musicVolume;
+
+    if (musicVolume > 0 && titleMusicRef.current.paused) {
+      titleMusicRef.current.play().catch(() => {});
+    }
+  }, [musicVolume]);
+
   const stopTitleMusic = () => {
     titleMusicRef.current?.pause();
     titleMusicRef.current = null;
   };
 
-  const returnToMainMenu = () => {
+ const returnToMainMenu = () => {
+  playSound('panelClose');
+
+  const confirmed = window.confirm(
+    'Are you sure you want to return to the main menu? Make sure you save your file first.'
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  setShowTitleScreen(true);
+  setSoundSettingsOpen(false);
+  startTitleMusic();
+};
+
+  const returnToSetupMenu = () => {
     playSound('panelClose');
-    setShowTitleScreen(true);
+
+    const nextSetup = {
+      ...gameSetup,
+      setupComplete: false,
+    };
+
+    setLocalSetup(nextSetup);
+    updateGameSetup(nextSetup);
+    setSetupComplete(false);
+    setShowTitleScreen(false);
+    setSoundSettingsOpen(false);
     startTitleMusic();
   };
 
@@ -205,11 +252,28 @@ export default function App() {
     }));
   };
 
-  const toggleSfxMuted = () => {
-    const nextMuted = !sfxMuted;
+  const toggleCampaignAct = (campaignAct: GameSetup['campaignAct']) => {
+    playSound('panelClose');
 
-    setSoundEffectsMuted(nextMuted);
-    setSfxMuted(nextMuted);
+    setLocalSetup((prev) => ({
+      ...prev,
+      campaignAct,
+    }));
+  };
+
+  const handleMusicVolumeChange = (value: number) => {
+    setMusicVolume(value);
+    setMusicVolumeState(value);
+  };
+
+  const handleSfxVolumeChange = (value: number) => {
+    setSfxVolume(value);
+    setSfxVolumeState(value);
+  };
+
+  const toggleSoundSettings = () => {
+    playSound('panelClose');
+    setSoundSettingsOpen((prev) => !prev);
   };
 
   const handleNewSave = () => {
@@ -217,6 +281,7 @@ export default function App() {
     startTitleMusic();
     resetGame();
     setShowTitleScreen(false);
+    setSoundSettingsOpen(false);
   };
 
   const handleSaveToFile = async () => {
@@ -228,10 +293,24 @@ export default function App() {
       return;
     }
 
-    const saveFile = exportGameSaveFile();
-    const fileName = createSaveFileName(saveName);
-
+const saveFile = exportGameSaveFile(saveName);
+const fileName = createSaveFileName(saveName);
     await downloadSaveFile(saveFile, fileName);
+  };
+
+  const handleResetGame = () => {
+    playSound('panelClose');
+
+    const confirmed = window.confirm(
+      'Are you sure you want to reset the game? This will clear the current app state.'
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    resetGame();
+    setSoundSettingsOpen(false);
   };
 
   const handleOpenSaveClick = () => {
@@ -255,6 +334,7 @@ export default function App() {
       importGameSaveFile(saveFile);
       stopTitleMusic();
       setShowTitleScreen(false);
+      setSoundSettingsOpen(false);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Could not open save file.');
     }
@@ -274,6 +354,7 @@ export default function App() {
     playSound('panelClose');
     startTitleMusic();
     setShowTitleScreen(true);
+    setSoundSettingsOpen(false);
   };
 
   const handleConfirmSetup = () => {
@@ -290,6 +371,7 @@ export default function App() {
       setupComplete: true,
     });
     setSetupComplete(true);
+    setSoundSettingsOpen(false);
   };
 
   return (
@@ -308,7 +390,7 @@ export default function App() {
             <h1>Arcs Blighted Reach Companion</h1>
             <h2>By Ethan Klein</h2>
             <p>
-              Track your Blighted Reach Campaign board state, player boards, and cards. With this app you can now play base Arcs while you have a campaign in progress or run mulptiple campaigns at the same time.
+              Track your Blighted Reach Campaign board state, player boards, and cards. With this app you can now play base Arcs while you have a campaign in progress or run mulptiple campaigns at once.
             </p>
 
             <div
@@ -369,6 +451,26 @@ export default function App() {
             >
               We love the Blighted Reach Campaign for its seemingly endless possibilites. To improve your experince you can hide UI you will not need. This includes players that are out of the game. Flagships, tokens from certain fates, and special strucutres from lore.
             </p>
+
+            <div className="setup-section">
+              <strong>Campaign Act</strong>
+              <p>Choose the act you are setting up for.</p>
+              <div className="chip-row">
+                <button
+                  className={(localSetup.campaignAct ?? 'actII') === 'actII' ? 'selected-chip' : ''}
+                  onClick={() => toggleCampaignAct('actII')}
+                >
+                  Act II
+                </button>
+
+                <button
+                  className={localSetup.campaignAct === 'actIII' ? 'selected-chip' : ''}
+                  onClick={() => toggleCampaignAct('actIII')}
+                >
+                  Act III
+                </button>
+              </div>
+            </div>
 
             <div className="setup-section">
               <strong>Players in Game</strong>
@@ -488,11 +590,11 @@ export default function App() {
               </button>
 
               <button
-                className="reset-button"
+                className="start-app-button"
                 onClick={handleConfirmSetup}
                 disabled={localSetup.playersInGame.length < 2}
               >
-                Start Game
+                Start App
               </button>
             </div>
           </div>
@@ -502,14 +604,35 @@ export default function App() {
       <div className="app-shell">
         <header className="topbar">
           <div>
-            <h1>Arcs Blighted Reach Companion</h1>
+            <h1>
+              Arcs Blighted Reach Companion{' '}
+              {gameSetup.setupComplete && (
+                <span
+                  style={{
+                    fontSize: '0.55em',
+                    opacity: 0.75,
+                    marginLeft: '0.6rem',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {gameSetup.campaignAct === 'actIII' ? 'Act III' : 'Act II'}
+                </span>
+              )}
+            </h1>
             <p>Click the board spaces to edit gates and planets. Cards and Player boards are editable below.</p>
           </div>
+
           <div className="topbar-actions">
             {gameSetup.setupComplete && (
-              <button className="music-button" onClick={returnToMainMenu}>
-                Main Menu
-              </button>
+              <>
+                <button className="music-button" onClick={returnToMainMenu}>
+                  Main Menu
+                </button>
+
+                <button className="music-button" onClick={returnToSetupMenu}>
+                  Edit Setup
+                </button>
+              </>
             )}
 
             <button className="music-button" onClick={handleSaveToFile}>
@@ -518,11 +641,68 @@ export default function App() {
 
             {gameSetup.setupComplete && !showTitleScreen && <BackgroundMusic />}
 
-            <button className="music-button" onClick={toggleSfxMuted}>
-              {sfxMuted ? 'Unmute SFX' : 'Mute SFX'}
-            </button>
+            <div style={{ position: 'relative' }}>
+              <button className="music-button" onClick={toggleSoundSettings}>
+                Sound Settings
+              </button>
 
-            <button className="reset-button" onClick={resetGame}>
+              {soundSettingsOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: 'calc(100% + 0.5rem)',
+                    zIndex: 15000,
+                    width: '16rem',
+                    padding: '0.85rem',
+                    borderRadius: '0.75rem',
+                    border: '1px solid rgba(255, 255, 255, 0.24)',
+                    background: 'rgba(5, 5, 5, 0.96)',
+                    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.55)',
+                    color: 'white',
+                  }}
+                >
+                  <label
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.35rem',
+                      marginBottom: '0.8rem',
+                    }}
+                  >
+                    <span>Music Volume: {Math.round(musicVolume * 100)}%</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={musicVolume}
+                      onChange={(event) => handleMusicVolumeChange(Number(event.target.value))}
+                    />
+                  </label>
+
+                  <label
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    <span>SFX Volume: {Math.round(sfxVolume * 100)}%</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={sfxVolume}
+                      onChange={(event) => handleSfxVolumeChange(Number(event.target.value))}
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <button className="reset-button" onClick={handleResetGame}>
               Reset game
             </button>
           </div>

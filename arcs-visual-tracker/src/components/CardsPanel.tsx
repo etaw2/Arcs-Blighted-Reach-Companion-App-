@@ -112,6 +112,10 @@ function groupCardsByCourtKey<T extends GameCard>(cards: T[]) {
   }, {});
 }
 
+function capitalizePlayerColor(color: PlayerColor) {
+  return color.charAt(0).toUpperCase() + color.slice(1);
+}
+
 function getCardSearchText(card: GameCard) {
   const searchableCard = card as GameCard & {
     name?: string;
@@ -233,7 +237,7 @@ function AddToPlayerMenu({
               setIsOpen(false);
             }}
           >
-            Add to {color}
+            Add to {capitalizePlayerColor(color)}
           </button>
         ))}
     </div>
@@ -254,6 +258,7 @@ export default function CardsPanel() {
   const addActionCardToDeck = useGameStore((state) => state.addActionCardToDeck);
   const removeActionCardFromDeck = useGameStore((state) => state.removeActionCardFromDeck);
   const scrapActionCard = useGameStore((state) => state.scrapActionCard);
+  const removeCardFromScrapPile = useGameStore((state) => state.removeCardFromScrapPile);
   const addPlayerCardToPlayer = useGameStore((state) => state.addPlayerCardToPlayer);
 
   const [showAvailableCourt, setShowAvailableCourt] = useState(false);
@@ -523,7 +528,7 @@ export default function CardsPanel() {
             <input
               value={availableCourtSearch}
               onChange={(event) => setAvailableCourtSearch(event.target.value)}
-              placeholder="Search available court cards..."
+              placeholder="Search available cards..."
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -1062,10 +1067,22 @@ availableActionCards.length === 0? (
             ) : (
               <CardGrid>
                 {sortById(scrapPile).map((card) => (
-                  <CardTile key={card.id}>
-                    <CardPicture card={card} />
-                  </CardTile>
-                ))}
+  <CardTile
+    key={card.id}
+    actions={
+      <button
+        onClick={() => {
+          playSound('cardMove');
+          removeCardFromScrapPile(card.id);
+        }}
+      >
+        Move to Available
+      </button>
+    }
+  >
+    <CardPicture card={card} />
+  </CardTile>
+))}
               </CardGrid>
             )}
           </div>

@@ -193,6 +193,116 @@ input {
 }
 
 .player-card {
+  text-align: center;
+}
+
+.player-card .player-title {
+  text-align: center;
+}
+
+.player-card .player-controls {
+  align-items: center;
+  text-align: center;
+}
+
+.player-card .subsection {
+  width: 100%;
+  text-align: center;
+}
+
+.player-card .inline-controls {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.player-card .inline-controls.grow {
+  justify-content: center;
+}
+
+.player-card .inline-controls label {
+  min-width: auto;
+  text-align: center;
+}
+
+.player-card .chip-row {
+  justify-content: center;
+}
+
+.player-card .resource-grid {
+  justify-content: center;
+  justify-items: center;
+}
+.player-card .resource-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 2.6rem);
+  justify-content: center;
+  justify-items: center;
+  column-gap: 1.1rem;
+  row-gap: 1rem;
+}
+
+.player-card .resource-grid .resource-box:nth-child(1) {
+  grid-column: 1 / span 2;
+}
+
+.player-card .resource-grid .resource-box:nth-child(2) {
+  grid-column: 3 / span 2;
+}
+
+.player-card .resource-grid .resource-box:nth-child(3) {
+  grid-column: 5 / span 2;
+}
+
+.player-card .resource-grid .resource-box:nth-child(4) {
+  grid-column: 2 / span 2;
+}
+
+.player-card .resource-grid .resource-box:nth-child(5) {
+  grid-column: 4 / span 2;
+}
+
+.player-card .resource-box {
+  text-align: center;
+}
+
+.player-card .resource-box > div {
+  justify-content: center;
+}
+
+.player-card select,
+.player-card input {
+  text-align: center;
+}
+.player-card .golem-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 5rem);
+  justify-content: center;
+  justify-items: center;
+  column-gap: 2rem;
+  row-gap: 1rem;
+}
+
+.player-card .golem-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.player-card .power-input {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.player-card .player-piece-icon,
+.player-card .favor-icon,
+.player-card .resource-icon,
+.player-card .initiative-icon {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.player-card {
   padding: 0.8rem;
 }
 
@@ -651,4 +761,38 @@ textarea,
 
 .start-title-button:hover {
   background: rgba(255, 255, 255, 0.22);
+}.start-app-button {
+  border: 1px solid rgba(120, 255, 160, 0.65);
+  background: rgba(40, 150, 80, 0.85);
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.65rem 1rem;
+  border-radius: 0.75rem;
+  cursor: pointer;
+}
+
+.start-app-button:hover:not(:disabled) {
+  background: rgba(55, 185, 100, 0.95);
+}
+
+.start-app-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.player-card .favor-grid {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 3rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.player-card .favor-grid .resource-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }

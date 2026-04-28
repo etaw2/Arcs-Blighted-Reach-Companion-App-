@@ -1,55 +1,35 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+import { getMusicVolume } from '../utils/sound';
 
 export function BackgroundMusic() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
-    const startMusic = async () => {
-      if (!audioRef.current) return;
+    const audio = new Audio('/assets/music/background.mp3');
+    audio.loop = true;
+    audio.volume = getMusicVolume();
+    audioRef.current = audio;
 
-      try {
-        await audioRef.current.play();
-        setIsPlaying(true);
-      } catch {
-        setIsPlaying(false);
+    if (audio.volume > 0) {
+      audio.play().catch(() => {});
+    }
+
+    const updateVolume = () => {
+      audio.volume = getMusicVolume();
+
+      if (audio.volume > 0 && audio.paused) {
+        audio.play().catch(() => {});
       }
-
-      window.removeEventListener('click', startMusic);
     };
 
-    window.addEventListener('click', startMusic);
+    window.addEventListener('arcs-volume-change', updateVolume);
 
     return () => {
-      window.removeEventListener('click', startMusic);
+      window.removeEventListener('arcs-volume-change', updateVolume);
+      audio.pause();
+      audioRef.current = null;
     };
   }, []);
 
-  const toggleMusic = async () => {
-    if (!audioRef.current) return;
-
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-      return;
-    }
-
-    await audioRef.current.play();
-    setIsPlaying(true);
-  };
-
-  return (
-    <div className="music-control">
-      <audio
-        ref={audioRef}
-        src="/assets/music/background.mp3"
-        loop
-        preload="auto"
-      />
-
-      <button onClick={toggleMusic}>
-        {isPlaying ? 'Mute Music' : 'Unmute Music'}
-      </button>
-    </div>
-  );
+  return null;
 }
