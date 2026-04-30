@@ -259,29 +259,34 @@ export default function SelectedSpacePanel() {
   const seatNumber = Number(selectedSpace.clusterId.replace('cluster', ''));
 
   const addOwnedBuilding = (type: 'city' | 'starport', color: PlayerColor) => {
-    const building: Building = {
-      type,
-      color,
-      seat: false,
-      seatNumber: null,
-    };
-
-    playSound('buildingAdd');
-    addBuildingToPlanet(selectedSpace.clusterId, selectedSpace.planetKey, building);
+  const building: Building = {
+    type,
+    color,
+    seat: false,
+    seatNumber: null,
   };
 
-  const addFreeBuilding = (type: 'city' | 'starport') => {
-    const building: Building = {
-      type,
-      color: 'free',
-      seat: false,
-      seatNumber: null,
-    };
+  const added = addBuildingToPlanet(selectedSpace.clusterId, selectedSpace.planetKey, building);
 
+  if (added) {
     playSound('buildingAdd');
-    addBuildingToPlanet(selectedSpace.clusterId, selectedSpace.planetKey, building);
+  }
+};
+
+const addFreeBuilding = (type: 'city' | 'starport') => {
+  const building: Building = {
+    type,
+    color: 'free',
+    seat: false,
+    seatNumber: null,
   };
 
+  const added = addBuildingToPlanet(selectedSpace.clusterId, selectedSpace.planetKey, building);
+
+  if (added) {
+    playSound('buildingAdd');
+  }
+};
   return (
     <aside className="panel">
       <div className="panel-header">

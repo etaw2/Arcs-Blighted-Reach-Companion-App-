@@ -16,6 +16,9 @@ import {
 
 const allPlayerColors: PlayerColor[] = ['blue', 'red', 'yellow', 'white'];
 
+const formatPlayerColor = (color: PlayerColor) =>
+  color.charAt(0).toUpperCase() + color.slice(1);
+
 const flagshipTokenImages: Record<PlayerColor, string> = {
   blue: '/assets/arcs dev_player piece blue flagship.png',
   red: '/assets/arcs dev_player piece red flagship.png',
@@ -129,6 +132,7 @@ export default function App() {
   const [showTitleScreen, setShowTitleScreen] = useState(true);
   const [soundSettingsOpen, setSoundSettingsOpen] = useState(false);
   const [showHelpPage, setShowHelpPage] = useState(false);
+  const [hasOpenedHelpAfterSetup, setHasOpenedHelpAfterSetup] = useState(false);
   const [showContactPopup, setShowContactPopup] = useState(false);
   const [musicVolume, setMusicVolumeState] = useState(getMusicVolume);
   const [sfxVolume, setSfxVolumeState] = useState(getSfxVolume);
@@ -362,6 +366,7 @@ export default function App() {
     playSound('panelClose');
     startTitleMusic();
     resetGame();
+    setHasOpenedHelpAfterSetup(false);
     setCurrentSaveName('arcs-campaign-save');
     setSaveNameDraft('arcs-campaign-save');
     setSaveStatusMessage('');
@@ -477,6 +482,7 @@ export default function App() {
       }
 
       importGameSaveFile(result.saveFile as Parameters<typeof importGameSaveFile>[0]);
+      setHasOpenedHelpAfterSetup(true);
       setCurrentSaveName(save.name || 'arcs-campaign-save');
       setSaveNameDraft(save.name || 'arcs-campaign-save');
       setSaveStatusMessage('');
@@ -709,7 +715,13 @@ export default function App() {
     });
     setSetupComplete(true);
     setSoundSettingsOpen(false);
-    setShowHelpPage(false);
+
+    if (!hasOpenedHelpAfterSetup) {
+      setShowHelpPage(true);
+      setHasOpenedHelpAfterSetup(true);
+    } else {
+      setShowHelpPage(false);
+    }
   };
 
   return (
@@ -1076,10 +1088,10 @@ export default function App() {
       margin: '0 auto',
     }}
   >
-    <h1>How to Use the Arcs Campaign Companion App</h1>
+    <h1>Using the Arcs Blighted Reach Companion App</h1>
 
     <p>
-      This app helps you save and rebuild your <strong>Blighted Reach Campaign</strong> between games.
+      This app lets you save and rebuild your <strong>Blighted Reach Campaign</strong> game state between acts.
       It is meant to be used after you finish a game and complete Intermission, but before you put the
       physical game away.
     </p>
@@ -1087,25 +1099,27 @@ export default function App() {
     <h2>The Basic Flow</h2>
 
     <p>
-      Finish Intermission first. Then enter the campaign state into the app. After that, save the app
-      file and put the physical game away. At your next session, open the saved app file, rebuild the
-      physical game from the app, and then continue with the normal Act II or Act III setup.
+      Start by completing all steps outlined in the Intermission Aid found in your Arcs game box. Then begin entering your campaign state into the app. Once you have entered all elements of your game state into the app, save your game state by clickng the save button and giving it a unique name.
+      Now you can put the physical game away. At your next session, open the saved app file, rebuild the
+      physical game from the app, and then continue with Act II or Act III setup as described in the Arcs Act II & III Set Up Aid in your Arcs game box.
+
     </p>
 
     <ol>
-      <li>Finish Intermission.</li>
-      <li>Enter the campaign state into the app.</li>
-      <li>Save the campaign file.</li>
-      <li>Put the physical game away.</li>
-      <li>At the next session, open the saved file.</li>
-      <li>Rebuild the Board, Player Areas, and Card Areas from the app.</li>
-      <li>Then complete the normal Act II or Act III Setup.</li>
+      <li>Complete Intermission Aid Steps.</li>
+      <li>Complete Game Setup Steps.</li>
+      <li>Enter the Board State.</li>
+      <li>Add Cards from the Available Cards Menu.</li>
+      <li>Check Placed Cards.</li>
+      <li>Fill Out Player Areas.</li>
+      <li>Save the Campaign File.</li>
+      <li>Prepare to Play Your Next Act.</li>
     </ol>
 
-    <h2>1. Finish Intermission First</h2>
+    <h2>1. Complete Intermission Aid steps</h2>
 
     <p>
-      At the end of a campaign game, complete Intermission following Intermission Aid. This includes choosing new Fates
+      At the end of a campaign game, complete all steps outlined in the Intermission Aid in your Arcs game box. This includes choosing new Fates
       and resolving any required Intermission steps.
     </p>
 
@@ -1114,32 +1128,33 @@ export default function App() {
       campaign state in the app, save the file, and then put the game away.
     </p>
 
-    <h2>2. Set Up the App</h2>
+    <h2>2. Complete Game Setup Steps</h2>
 
     <p>
-      Start a New Save or open an existing one. In the Setup Menu, choose which Players are still in
-      the game, which Players have Flagships, whether the next campaign game is Act II or Act III, and which
-      Special Tokens or Structures are being used.
+      Start a New Save or open an existing one on the title screen. In the Setup Menu, choose the players who are in
+      the game, the players who have Flagships, the next act of your campaign (Act II or Act III), and the
+      Special Tokens and/or Structures being used.
     </p>
 
     <p>
-      When everything is selected, click <strong>Start App</strong>. If you need to change these choices
+      When you have completed the game set up steps outlined above, click <strong>Start App</strong>. If you need to change any game set up choices
       later, use <strong>Edit Setup</strong>.
     </p>
 
     <h2>3. Enter the Board State</h2>
 
     <p>
-      Look at your physical campaign Map. Starting with <strong>Cluster 1</strong>, go System by System
-      until you reach <strong>Cluster 6</strong>.
+      Look at your physical Arcs game board. Starting with <strong>Cluster 1</strong>, use the app to 
+      go System by System to enter your game state 
+      until you finish <strong>Cluster 6</strong> (dont forget the gates).
     </p>
 
     <p>
-      Click a Space on the app Board to open the Selected Space Panel. Use that Panel to add the Pieces
+      You will do this by clicking a space on the board in the app to open the Selected Space Panel. Use that panel to add the pieces
       that are currently in that System on your physical Board.
     </p>
 
-    <p>You can track Pieces such as:</p>
+    <p>You can track pieces such as:</p>
 
     <ul>
       <li>Ships</li>
@@ -1156,13 +1171,12 @@ export default function App() {
       <li>Seat Tokens, if they are being used</li>
     </ul>
 
-    <p>Continue until the Board in the app matches the physical campaign Board.</p>
+    <p>Continue until the board in the app matches the physical game board.</p>
 
-    <h2>4. Add Cards from Available Cards</h2>
+    <h2>4. Add Cards from the Available Cards Menu</h2>
 
     <p>
-      Next, go to <strong>Available Cards</strong>. This Section contains Cards that can be added to the
-      campaign state.
+      Next, go to the <strong>Available Cards</strong> menu. This Section contains all the cards that can be added.
     </p>
 
     <p>
@@ -1172,7 +1186,7 @@ export default function App() {
 
     <p>You can use the Search Bar to quickly find a Card by Name, Card ID, or Group.</p>
 
-    <p>From Available Cards, Cards can be added to:</p>
+    <p>From Available Cards, cards can be added to:</p>
 
     <ul>
       <li>Court</li>
@@ -1191,8 +1205,8 @@ export default function App() {
     <h2>5. Check Placed Cards</h2>
 
     <p>
-      After adding Cards, go to <strong>Placed Cards</strong>. Use this Area to confirm that every Card
-      is in the correct place.
+      After adding Cards to the Court Deck, Rules Areas, Action Deck, and Scrap, go to <strong>Placed Cards</strong>. Use this Area to confirm that every card
+      is in the correct place. Then check the Player Areas as well.
     </p>
 
     <p>Placed Cards includes:</p>
@@ -1208,14 +1222,14 @@ export default function App() {
 
     <p>
       If a Court Card was scrapped during your campaign, you can scrap it from the Court in the app.
-      If a Card was moved to the Scrap Pile by mistake, you can move it back to Available Cards.
+      If a card was moved to the Scrap Pile by mistake, you can move it back to Available Cards.
     </p>
 
     <h2>6. Fill Out Player Areas</h2>
 
     <p>
-      Finally, go to the <strong>Player Areas</strong> section. For each Player, enter everything from
-      that Player’s physical campaign area.
+      Finally, go to the <strong>Player Areas</strong> section. For each player, enter everything from
+      that player’s physical area.
     </p>
 
     <p>You can track:</p>
@@ -1234,13 +1248,13 @@ export default function App() {
       <li>Flagship Board Pieces, if they are being used</li>
     </ul>
 
-    <p>The goal is for each Player Area in the app to match that Player’s physical campaign area.</p>
+    <p>The goal is for each Player Area in the app to match that player’s physical area.</p>
 
     <h2>7. Save the Campaign File</h2>
 
     <p>
-      When the Board, Cards, and Player Areas are all entered, click <strong>Save</strong>. Choose or
-      confirm the Save Name for the campaign file.
+      When the Board, Cards, and Player Areas are all entered correctly, click <strong>Save</strong>. Choose or
+      confirm the unique Save Name for the campaign file.
     </p>
 
     <p>The app saves the current campaign state, including:</p>
@@ -1258,17 +1272,14 @@ export default function App() {
 
     <p>After saving, you can safely put the physical game away.</p>
 
-    <h2>8. Rebuild the Next Game Later</h2>
+    <h2>8. Prepare to Play Your Next Act</h2>
 
     <p>
-      At the start of your next session, open the app and load the saved campaign file. Use the app as
-      your source of truth.
+      At the start of your next session, open the app and load the saved campaign file. Rebuild your game state on the physical board as represented in the app.
     </p>
 
-    <p>First, reset the physical game Components to match the app:</p>
-
     <ul>
-      <li>Rebuild the Board from the app Map.</li>
+      <li>Rebuild the Board from the app map.</li>
       <li>Rebuild each Player Area from the Player Areas section.</li>
       <li>Rebuild the Court from Placed Cards.</li>
       <li>Rebuild Laws, Edicts, and Summit Cards.</li>
@@ -1278,13 +1289,13 @@ export default function App() {
     </ul>
 
     <p>
-      Once the physical game matches the app, continue with the normal <strong>Act II</strong> or
-      <strong> Act III</strong> Setup Guide.
+      Once the physical game state matches the app, continue with the steps outlined in the <strong>Act II</strong> &
+      <strong> Act III</strong> Setup Guide in your Acrs game box.
     </p>
 
     <p>
-      The app does not replace the campaign rules. It helps you save the campaign state after
-      Intermission and rebuild it correctly before the next game.
+      Please note: The app does not replace the campaign rules. It helps you save the campaign state after
+      Intermission and rebuild it correctly before the next Act.
     </p>
   </section>
 </div>
@@ -1361,7 +1372,7 @@ export default function App() {
                 <h2>By Ethan Klein</h2>
 
                 <p>
-                  Track your Blighted Reach Campaign board state, player boards, and cards. With this app you can now play base Arcs while you have a campaign in progress or run mulptiple campaigns at once.
+                  Use this app to track your Blighted Reach Campaign board state, player boards, and cards. With this app you can now play base Arcs while you have a campaign in progress or track multiple campaigns at once.
                 </p>
 
                 <div
@@ -1444,12 +1455,12 @@ export default function App() {
                 fontSize: '0.98rem',
               }}
             >
-              We love the Blighted Reach Campaign for its seemingly endless possibilites. To improve your experince you can hide UI you will not need. This includes players that are out of the game. Flagships, tokens from certain fates, and special strucutres from lore.
+              We love the Blighted Reach Campaign for its seemingly endless possibilites. To improve your experince you can hide features not in your current campaign. This includes players that are out of the game, flagships, tokens from certain fates, and special strucutres from lore.
             </p>
 
             <div className="setup-section">
               <strong>Campaign Act</strong>
-              <p>Choose the act you are setting up for.</p>
+              <p>Choose the act you are setting up for:</p>
               <div className="chip-row">
                 <button
                   className={(localSetup.campaignAct ?? 'actII') === 'actII' ? 'selected-chip' : ''}
@@ -1468,20 +1479,20 @@ export default function App() {
             </div>
 
             <div className="setup-section">
-              <strong>Players in Game</strong>
-              <p>Choose at least 2 players.</p>
-              <div className="chip-row">
-                {allPlayerColors.map((color) => (
-                  <button
-                    key={color}
-                    className={localSetup.playersInGame.includes(color) ? 'selected-chip' : ''}
-                    onClick={() => togglePlayer(color)}
-                  >
-                    {color}
-                  </button>
-                ))}
-              </div>
-            </div>
+  <strong>Players in Game</strong>
+  <p>Choose at least 2 players:</p>
+  <div className="chip-row">
+    {allPlayerColors.map((color) => (
+      <button
+        key={color}
+        className={localSetup.playersInGame.includes(color) ? 'selected-chip' : ''}
+        onClick={() => togglePlayer(color)}
+      >
+        {formatPlayerColor(color)}
+      </button>
+    ))}
+  </div>
+</div>
 
             <div className="setup-section">
               <strong>Players with Flagships</strong>
