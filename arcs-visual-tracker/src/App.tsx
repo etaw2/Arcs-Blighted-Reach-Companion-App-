@@ -554,18 +554,6 @@ export default function App() {
       return;
     }
 
-    useEffect(() => {
-  const shouldShowMainScrollbar = !showTitleScreen && gameSetup.setupComplete;
-
-  document.body.classList.toggle('show-main-scrollbar', shouldShowMainScrollbar);
-  document.documentElement.classList.toggle('show-main-scrollbar', shouldShowMainScrollbar);
-
-  return () => {
-    document.body.classList.remove('show-main-scrollbar');
-    document.documentElement.classList.remove('show-main-scrollbar');
-  };
-}, [showTitleScreen, gameSetup.setupComplete]);
-
     const handleSaveNameKeyDown = (event: KeyboardEvent) => {
       if (!saveNameModalOpen || saveNameSaving) {
         return;
