@@ -7,9 +7,11 @@ import {
   type FlagshipBoardSlotType,
   type FlagshipUpgradeId,
   type CourtCard,
+  type GameSaveFile,
   type GameSetup,
   type GameState,
   type PlanetKey,
+  type PlayerBoardCard,
   type PlayerCard,
   type PlayerColor,
   type PlayerState,
@@ -19,6 +21,7 @@ import {
   type SaveGameNumber,
   type ShipColor,
   createEmptyFlagshipBoard,
+  createGameSaveFile,
   createInitialGameState,
   defaultGameSetup,
 } from './gameState';
@@ -39,11 +42,9 @@ const applyInitiativeRules = (players: PlayerState[]): PlayerState[] => {
   return players;
 };
 
-const getClusterSeatNumber = (clusterId: ClusterId): number =>
-  Number(clusterId.replace('cluster', ''));
-
 const normalizeGameSetup = (gameSetup?: Partial<GameSetup>): GameSetup => ({
   setupComplete: gameSetup?.setupComplete ?? defaultGameSetup.setupComplete,
+  campaignAct: gameSetup?.campaignAct ?? defaultGameSetup.campaignAct,
   playersInGame: gameSetup?.playersInGame ?? defaultGameSetup.playersInGame,
   playersWithFlagships:
     gameSetup?.playersWithFlagships ?? defaultGameSetup.playersWithFlagships,
@@ -121,6 +122,7 @@ const clearSeatsFromMap = (map: GameState['map']): GameState['map'] =>
       },
     ])
   ) as GameState['map'];
+  
 
 const removeFlagshipColorFromMap = (
   map: GameState['map'],
@@ -251,6 +253,8 @@ interface GameStore {
 
   resetGame: () => void;
   setGameState: (gameState: GameState) => void;
+  exportGameSaveFile: (saveName?: string) => GameSaveFile;
+  importGameSaveFile: (saveFile: GameSaveFile) => void;
   setGameNumber: (gameNumber: SaveGameNumber) => void;
   updateGameSetup: (updates: Partial<GameSetup>) => void;
   setSetupComplete: (setupComplete: boolean) => void;
@@ -294,6 +298,10 @@ interface GameStore {
   addActionCardToDeck: (card: ActionCard) => void;
   removeActionCardFromDeck: (cardId: string) => void;
   scrapActionCard: (cardId: string) => void;
+  removeCardFromScrapPile: (cardId: string) => void;
+  addPlayerCardToPlayer: (color: PlayerColor, card: PlayerBoardCard) => void;
+  removePlayerCardFromPlayer: (color: PlayerColor, cardId: string) => void;
+  scrapPlayerCardFromPlayer: (color: PlayerColor, cardId: string) => void;
 
   addPlayer: (player: PlayerState) => void;
   removePlayer: (color: PlayerColor) => void;
@@ -327,6 +335,21 @@ export const useGameStore = create<GameStore>((set) => ({
         ...gameState,
         gameSetup: normalizeGameSetup(gameState.gameSetup),
       },
+    }),
+
+exportGameSaveFile: (saveName) => {
+  const state = useGameStore.getState();
+
+  return createGameSaveFile(state.gameState, saveName);
+},
+
+  importGameSaveFile: (saveFile) =>
+    set({
+      gameState: {
+        ...saveFile.data,
+        gameSetup: normalizeGameSetup(saveFile.data.gameSetup),
+      },
+      selectedSpace: null,
     }),
 
   setGameNumber: (gameNumber) =>
@@ -1509,6 +1532,120 @@ export const useGameStore = create<GameStore>((set) => ({
             ...state.gameState.scrapPile,
             scrap: [...state.gameState.scrapPile.scrap, card],
           },
+        },
+      };
+    }),
+
+  removeCardFromScrapPile: (cardId) =>
+    set((state) => ({
+      gameState: {
+        ...state.gameState,
+        scrapPile: {
+          ...state.gameState.scrapPile,
+          scrap: state.gameState.scrapPile.scrap.filter((card) => card.id !== cardId),
+        },
+      },
+    })),
+
+  addPlayerCardToPlayer: (color, card) =>
+    set((state) => {
+      const owningPlayer = state.gameState.players.find((player) =>
+        (player.cards ?? []).some((playerCard) => playerCard.id === card.id)
+      );
+
+      if (owningPlayer) {
+        return state;
+      }
+
+      const playerCardPool = state.gameState.playerCardPool ?? { available: [] };
+
+      return {
+        gameState: {
+          ...state.gameState,
+          court: {
+            ...state.gameState.court,
+            inDeck: state.gameState.court.inDeck.filter((courtCard) => courtCard.id !== card.id),
+          },
+          playerCardPool: {
+            ...playerCardPool,
+            available: playerCardPool.available.filter(
+              (availableCard) => availableCard.id !== card.id
+            ),
+          },
+          players: state.gameState.players.map((player) =>
+            player.color === color
+              ? {
+                  ...player,
+                  cards: [...(player.cards ?? []), card],
+                }
+              : player
+          ),
+        },
+      };
+    }),
+
+  removePlayerCardFromPlayer: (color, cardId) =>
+    set((state) => {
+      const player = state.gameState.players.find((entry) => entry.color === color);
+      const card = player?.cards?.find((entry) => entry.id === cardId);
+
+      if (!player || !card) {
+        return state;
+      }
+
+      const playerCardPool = state.gameState.playerCardPool ?? { available: [] };
+      const isAlreadyAvailable = playerCardPool.available.some(
+        (availableCard) => availableCard.id === cardId
+      );
+
+      const nextAvailable =
+        card.category === 'player' && !isAlreadyAvailable
+          ? [...playerCardPool.available, card as PlayerCard]
+          : playerCardPool.available;
+
+      return {
+        gameState: {
+          ...state.gameState,
+          playerCardPool: {
+            ...playerCardPool,
+            available: nextAvailable,
+          },
+          players: state.gameState.players.map((entry) =>
+            entry.color === color
+              ? {
+                  ...entry,
+                  cards: (entry.cards ?? []).filter((playerCard) => playerCard.id !== cardId),
+                }
+              : entry
+          ),
+        },
+      };
+    }),
+
+  scrapPlayerCardFromPlayer: (color, cardId) =>
+    set((state) => {
+      const player = state.gameState.players.find((entry) => entry.color === color);
+      const card = player?.cards?.find((entry) => entry.id === cardId);
+
+      if (!player || !card) {
+        return state;
+      }
+
+      return {
+        gameState: {
+          ...state.gameState,
+          scrapPile: {
+            ...state.gameState.scrapPile,
+            scrap: [...state.gameState.scrapPile.scrap, card],
+          },
+          players: state.gameState.players.map((entry) =>
+            entry.color === color
+              ? {
+                  ...entry,
+                  cards: (entry.cards ?? []).filter((playerCard) => playerCard.id !== cardId),
+                }
+              : entry
+          ),
         },
       };
     }),

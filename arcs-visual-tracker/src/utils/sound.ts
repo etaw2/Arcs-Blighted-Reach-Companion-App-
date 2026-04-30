@@ -33,12 +33,39 @@ const soundPaths: Record<SoundName, string> = {
   panelClose: '/assets/sounds/panel-close.mp3',
 };
 
+const MUSIC_VOLUME_STORAGE_KEY = 'arcs-music-volume';
+const SFX_VOLUME_STORAGE_KEY = 'arcs-sfx-volume';
 const SFX_MUTED_STORAGE_KEY = 'arcs-sfx-muted';
 
-let soundEffectsMuted =
-  typeof window !== 'undefined'
-    ? window.localStorage.getItem(SFX_MUTED_STORAGE_KEY) === 'true'
-    : false;
+function clampVolume(value: number) {
+  if (Number.isNaN(value)) return 0.35;
+  return Math.min(1, Math.max(0, value));
+}
+
+function readStoredVolume(key: string, fallback: number) {
+  if (typeof window === 'undefined') {
+    return fallback;
+  }
+
+  const stored = window.localStorage.getItem(key);
+
+  if (stored === null) {
+    return fallback;
+  }
+
+  return clampVolume(Number(stored));
+}
+
+let musicVolume = readStoredVolume(MUSIC_VOLUME_STORAGE_KEY, 0.45);
+let sfxVolume = readStoredVolume(SFX_VOLUME_STORAGE_KEY, 0.35);
+
+if (
+  typeof window !== 'undefined' &&
+  window.localStorage.getItem(SFX_MUTED_STORAGE_KEY) === 'true' &&
+  window.localStorage.getItem(SFX_VOLUME_STORAGE_KEY) === null
+) {
+  sfxVolume = 0;
+}
 
 const sounds = Object.fromEntries(
   Object.entries(soundPaths).map(([name, path]) => {
@@ -48,20 +75,51 @@ const sounds = Object.fromEntries(
   })
 ) as Record<SoundName, HTMLAudioElement>;
 
-export function getSoundEffectsMuted() {
-  return soundEffectsMuted;
-}
-
-export function setSoundEffectsMuted(isMuted: boolean) {
-  soundEffectsMuted = isMuted;
-
+function notifyVolumeChange() {
   if (typeof window !== 'undefined') {
-    window.localStorage.setItem(SFX_MUTED_STORAGE_KEY, String(isMuted));
+    window.dispatchEvent(new Event('arcs-volume-change'));
   }
 }
 
+export function getMusicVolume() {
+  return musicVolume;
+}
+
+export function setMusicVolume(volume: number) {
+  musicVolume = clampVolume(volume);
+
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(MUSIC_VOLUME_STORAGE_KEY, String(musicVolume));
+  }
+
+  notifyVolumeChange();
+}
+
+export function getSfxVolume() {
+  return sfxVolume;
+}
+
+export function setSfxVolume(volume: number) {
+  sfxVolume = clampVolume(volume);
+
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(SFX_VOLUME_STORAGE_KEY, String(sfxVolume));
+    window.localStorage.setItem(SFX_MUTED_STORAGE_KEY, String(sfxVolume === 0));
+  }
+
+  notifyVolumeChange();
+}
+
+export function getSoundEffectsMuted() {
+  return sfxVolume <= 0;
+}
+
+export function setSoundEffectsMuted(isMuted: boolean) {
+  setSfxVolume(isMuted ? 0 : 0.35);
+}
+
 export function playSound(name: SoundName) {
-  if (soundEffectsMuted) {
+  if (sfxVolume <= 0) {
     return;
   }
 
@@ -70,6 +128,6 @@ export function playSound(name: SoundName) {
   if (!sound) return;
 
   sound.currentTime = 0;
-  sound.volume = 0.35;
+  sound.volume = sfxVolume;
   sound.play().catch(() => {});
 }

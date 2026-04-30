@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGameStore } from '../gameStore';
 import { playSound } from '../utils/sound';
+import GameCardView from './GameCardView';
 import {
   flagshipBoardImage,
   flagshipUpgrades,
@@ -119,8 +120,10 @@ export default function PlayerBoards() {
   const gameSetup = useGameStore((state) => state.gameState.gameSetup);
   const updatePlayer = useGameStore((state) => state.updatePlayer);
   const updatePlayerResources = useGameStore((state) => state.updatePlayerResources);
+  const removePlayerCardFromPlayer = useGameStore((state) => state.removePlayerCardFromPlayer);
+  const scrapPlayerCardFromPlayer = useGameStore((state) => state.scrapPlayerCardFromPlayer);
   const setInitiative = useGameStore((state) => state.setInitiative);
-    const placeFlagshipBoardBuilding = useGameStore(
+  const placeFlagshipBoardBuilding = useGameStore(
     (state) => state.placeFlagshipBoardBuilding
   );
   const removeFlagshipBoardBuilding = useGameStore(
@@ -137,7 +140,7 @@ export default function PlayerBoards() {
     white: '',
   });
 
-    const [selectedFlagshipBuilding, setSelectedFlagshipBuilding] = useState<
+  const [selectedFlagshipBuilding, setSelectedFlagshipBuilding] = useState<
     Partial<Record<PlayerColor, BuildingType>>
   >({});
 
@@ -150,7 +153,7 @@ export default function PlayerBoards() {
 
   return (
     <section className="player-section">
-      <h2>Player Boards</h2>
+      <h2>Player Areas</h2>
       <div className="player-grid">
         {playerColors
           .filter((color) => activePlayerColors.includes(color))
@@ -161,28 +164,28 @@ export default function PlayerBoards() {
             const isTiedForHighest = hasTieForHighest && player.power === highestPower;
 
             const toggleOutrage = (resource: ResourceType) => {
-  const hasOutrage = player.outrage.includes(resource);
-  const next = hasOutrage
-    ? player.outrage.filter((item) => item !== resource)
-    : [...player.outrage, resource];
+              const hasOutrage = player.outrage.includes(resource);
+              const next = hasOutrage
+                ? player.outrage.filter((item) => item !== resource)
+                : [...player.outrage, resource];
 
-  playSound(hasOutrage ? 'cheer' : 'outrage');
+              playSound(hasOutrage ? 'cheer' : 'outrage');
 
-  updatePlayer(color, { outrage: next });
-};
+              updatePlayer(color, { outrage: next });
+            };
 
-           const changeResource = (resource: ResourceType, delta: number) => {
-  const current = player.resources[resource];
-  const next = Math.max(0, current + delta);
+            const changeResource = (resource: ResourceType, delta: number) => {
+              const current = player.resources[resource];
+              const next = Math.max(0, current + delta);
 
-  if (next === current) {
-    return;
-  }
+              if (next === current) {
+                return;
+              }
 
-  playSound(delta > 0 ? 'resources' : 'panelClose');
+              playSound(delta > 0 ? 'resources' : 'panelClose');
 
-  updatePlayerResources(color, { [resource]: next });
-};
+              updatePlayerResources(color, { [resource]: next });
+            };
 
             const changeFavor = (favorColor: PlayerColor, delta: number) => {
               const current = player.favors[favorColor];
@@ -202,166 +205,166 @@ export default function PlayerBoards() {
             };
 
             const toggleGolem = (golemType: GolemType) => {
-  const isTurningOn = !player.golems[golemType];
+              const isTurningOn = !player.golems[golemType];
 
-  if (!isTurningOn) {
-    playSound('tokenRemove');
+              if (!isTurningOn) {
+                playSound('tokenRemove');
 
-    updatePlayer(color, {
-      golems: {
-        ...player.golems,
-        [golemType]: false,
-      },
-    });
-    return;
-  }
+                updatePlayer(color, {
+                  golems: {
+                    ...player.golems,
+                    [golemType]: false,
+                  },
+                });
+                return;
+              }
 
-  playSound('golemAdd');
+              playSound('golemAdd');
 
-  activePlayerColors.forEach((otherColor) => {
-    const otherPlayer = players.find((p) => p.color === otherColor);
-    if (!otherPlayer) return;
+              activePlayerColors.forEach((otherColor) => {
+                const otherPlayer = players.find((p) => p.color === otherColor);
+                if (!otherPlayer) return;
 
-    updatePlayer(otherColor, {
-      golems: {
-        ...otherPlayer.golems,
-        [golemType]: otherColor === color,
-      },
-    });
-  });
-};
+                updatePlayer(otherColor, {
+                  golems: {
+                    ...otherPlayer.golems,
+                    [golemType]: otherColor === color,
+                  },
+                });
+              });
+            };
 
             return (
               <div key={color} className="player-card">
                 <h3 className={`player-title ${color}`}>{color.toUpperCase()}</h3>
 
-                <img
-                  className="player-board-image"
-                  src={playerBoardImageByColor[color]}
-                  alt={`${color} player board`}
-                />
-
-                               
+                
 
                 <div className="player-controls">
-                   {gameSetup.playersWithFlagships.includes(color) && (
-                  <div
-                    style={{
-                      position: 'relative',
-                      width: '100%',
-                      display: 'inline-block',
-                    }}
-                  >
-                    <img
-                      className="player-board-image"
-                      src={flagshipBoardImage}
-                      alt="flagship board"
+                  {gameSetup.playersWithFlagships.includes(color) && (
+                    <div
                       style={{
-                        display: 'block',
+                        position: 'relative',
                         width: '100%',
-                        height: 'auto',
+                        display: 'inline-block',
                       }}
-                    />
+                    >
+                      <img
+                        className="player-board-image"
+                        src={flagshipBoardImage}
+                        alt="flagship board"
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          height: 'auto',
+                        }}
+                      />
 
-                    {flagshipBoardSlots.map((slot) => {
-                      const flagshipBoard = player.flagshipBoard;
-                      const upgradeState = flagshipBoard[slot.upgradeId];
-                      const placedBuilding = upgradeState[slot.slotType];
-                      const selectedBuilding = selectedFlagshipBuilding[color];
-                      const armorIsUnlocked =
-                        slot.slotType === 'upgrade' || Boolean(upgradeState.upgrade);
-                      const isSelectable =
-                        Boolean(selectedBuilding) && !placedBuilding && armorIsUnlocked;
+                      {flagshipBoardSlots.map((slot) => {
+                        const flagshipBoard = player.flagshipBoard;
+                        const upgradeState = flagshipBoard[slot.upgradeId];
+                        const placedBuilding = upgradeState[slot.slotType];
+                        const selectedBuilding = selectedFlagshipBuilding[color];
+                        const armorIsUnlocked =
+                          slot.slotType === 'upgrade' || Boolean(upgradeState.upgrade);
+                        const isSelectable =
+                          Boolean(selectedBuilding) && !placedBuilding && armorIsUnlocked;
 
-                      return (
-                        <button
-                          key={`${slot.upgradeId}-${slot.slotType}`}
-                          title={`${
-                            flagshipUpgrades.find((upgrade) => upgrade.id === slot.upgradeId)
-                              ?.name
-                          } ${slot.slotType}`}
-                          onClick={() => {
-                            if (placedBuilding) {
-                              removeFlagshipBoardBuilding(
+                        return (
+                          <button
+                            key={`${slot.upgradeId}-${slot.slotType}`}
+                            title={`${
+                              flagshipUpgrades.find((upgrade) => upgrade.id === slot.upgradeId)
+                                ?.name
+                            } ${slot.slotType}`}
+                            onClick={() => {
+                              if (placedBuilding) {
+                                playSound('tokenRemove');
+
+                                removeFlagshipBoardBuilding(
+                                  color,
+                                  slot.upgradeId,
+                                  slot.slotType
+                                );
+                                return;
+                              }
+
+                              if (!selectedBuilding || !armorIsUnlocked) {
+                                return;
+                              }
+
+                              playSound('buildingAdd');
+
+                              placeFlagshipBoardBuilding(
                                 color,
                                 slot.upgradeId,
-                                slot.slotType
+                                slot.slotType,
+                                selectedBuilding
                               );
-                              return;
-                            }
 
-                            if (!selectedBuilding || !armorIsUnlocked) {
-                              return;
-                            }
+                              setSelectedFlagshipBuilding((prev) => ({
+                                ...prev,
+                                [color]: undefined,
+                              }));
+                            }}
+                            style={{
+                              position: 'absolute',
+                              left: slot.left,
+                              top: `calc(${slot.top} + ${flagshipSlotVerticalOffset})`,
+                              transform: 'translate(-50%, -50%)',
+                              width: '9%',
+                              aspectRatio: '1 / 1',
+                              height: 'auto',
+                              border: 'none',
+                              background: 'transparent',
+                              padding: 0,
+                              cursor: placedBuilding || isSelectable ? 'pointer' : 'default',
+                              opacity: slot.slotType === 'armor' && !armorIsUnlocked ? 0.35 : 1,
+                            }}
+                          >
+                            {isSelectable && selectedBuilding && (
+                              <img
+                                src={
+                                  selectedBuilding === 'city'
+                                    ? cityImageByColor[color]
+                                    : starportImageByColor[color]
+                                }
+                                alt=""
+                                style={{
+                                  position: 'absolute',
+                                  inset: 0,
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'contain',
+                                  opacity: 0.45,
+                                  filter: 'brightness(2) drop-shadow(0 0 8px white) drop-shadow(0 0 14px white)',
+                                  pointerEvents: 'none',
+                                }}
+                              />
+                            )}
 
-                            placeFlagshipBoardBuilding(
-                              color,
-                              slot.upgradeId,
-                              slot.slotType,
-                              selectedBuilding
-                            );
+                            {placedBuilding && (
+                              <img
+                                className="space-token-icon"
+                                src={
+                                  placedBuilding.type === 'city'
+                                    ? cityImageByColor[color]
+                                    : starportImageByColor[color]
+                                }
+                                alt={`${color} ${placedBuilding.type}`}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'contain',
+                                }}
+                              />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                            setSelectedFlagshipBuilding((prev) => ({
-                              ...prev,
-                              [color]: undefined,
-                            }));
-                          }}
-                          style={{
-                            position: 'absolute',
-                            left: slot.left,
-                            top: `calc(${slot.top} + ${flagshipSlotVerticalOffset})`,
-                            transform: 'translate(-50%, -50%)',
-                            width: '9%',
-                            aspectRatio: '1 / 1',
-                            height: 'auto',
-                            border: 'none',
-                            background: 'transparent',
-                            padding: 0,
-                            cursor: placedBuilding || isSelectable ? 'pointer' : 'default',
-                            opacity: slot.slotType === 'armor' && !armorIsUnlocked ? 0.35 : 1,
-                          }}
-                        >
-                          {isSelectable && selectedBuilding && (
-  <img
-    src={
-      selectedBuilding === 'city'
-        ? cityImageByColor[color]
-        : starportImageByColor[color]
-    }
-    alt=""
-    style={{
-      position: 'absolute',
-      inset: 0,
-      width: '100%',
-      height: '100%',
-      objectFit: 'contain',
-      opacity: 0.45,
-      filter: 'brightness(2) drop-shadow(0 0 8px white) drop-shadow(0 0 14px white)',
-      pointerEvents: 'none',
-    }}
-  />
-)}
-                          {placedBuilding && (
-                            <img
-  className="space-token-icon"
-  src={
-    placedBuilding.type === 'city'
-      ? cityImageByColor[color]
-      : starportImageByColor[color]
-  }
-  alt={`${color} ${placedBuilding.type}`}
-  style={{
-    width: '100%',
-    height: '100%',
-    objectFit: 'contain',
-  }}
-/>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
                   {gameSetup.playersWithFlagships.includes(color) && (
                     <div className="subsection">
                       <strong>Add Flagship Upgrades</strong>
@@ -373,10 +376,16 @@ export default function PlayerBoards() {
                               : ''
                           }
                           onClick={() =>
-                            setSelectedFlagshipBuilding((prev) => ({
-                              ...prev,
-                              [color]: prev[color] === 'city' ? undefined : 'city',
-                            }))
+                            setSelectedFlagshipBuilding((prev) => {
+                              const isTurningOff = prev[color] === 'city';
+
+                              playSound(isTurningOff ? 'panelClose' : 'panelOpen');
+
+                              return {
+                                ...prev,
+                                [color]: isTurningOff ? undefined : 'city',
+                              };
+                            })
                           }
                           disabled={player.cities <= 0}
                         >
@@ -390,11 +399,16 @@ export default function PlayerBoards() {
                               : ''
                           }
                           onClick={() =>
-                            setSelectedFlagshipBuilding((prev) => ({
-                              ...prev,
-                              [color]:
-                                prev[color] === 'starport' ? undefined : 'starport',
-                            }))
+                            setSelectedFlagshipBuilding((prev) => {
+                              const isTurningOff = prev[color] === 'starport';
+
+                              playSound(isTurningOff ? 'panelClose' : 'panelOpen');
+
+                              return {
+                                ...prev,
+                                [color]: isTurningOff ? undefined : 'starport',
+                              };
+                            })
                           }
                           disabled={player.starports <= 0}
                         >
@@ -403,7 +417,20 @@ export default function PlayerBoards() {
                       </div>
                     </div>
                   )}
-
+<div className="inline-controls grow">
+  <label>Player</label>
+  <input
+    type="text"
+    value={player.name ?? ''}
+    onChange={(event) => updatePlayer(color, { name: event.target.value })}
+    placeholder="Player name"
+    style={{
+      minWidth: '10rem',
+      maxWidth: '14rem',
+      textAlign: 'center',
+    }}
+  />
+</div>
                   <div className="inline-controls">
                     <label>Power</label>
                     <input
@@ -462,7 +489,7 @@ export default function PlayerBoards() {
                     )}
                   </div>
 
-                                    <div className="inline-controls grow">
+                  <div className="inline-controls grow">
                     <label>Fate</label>
                     <select
                       value={player.fate ?? ''}
@@ -489,27 +516,77 @@ export default function PlayerBoards() {
                     </select>
                   </div>
 
+                <div className="subsection">
+  <strong>Favors</strong>
+  <div className="favor-grid">
+    {playerColors
+      .filter((favorColor) => favorColor !== color)
+      .filter((favorColor) => activePlayerColors.includes(favorColor))
+      .map((favorColor) => (
+        <div className="resource-box" key={favorColor}>
+          <img
+            className="favor-icon"
+            src={favorImageByColor[favorColor]}
+            alt={`${favorColor} favor`}
+          />
+          <div>
+            <button onClick={() => changeFavor(favorColor, -1)}>-</button>
+            <strong>{player.favors[favorColor]}</strong>
+            <button onClick={() => changeFavor(favorColor, 1)}>+</button>
+          </div>
+        </div>
+      ))}
+  </div>
+</div>
+
                   <div className="subsection">
-                    <strong>Favors</strong>
-                    <div className="resource-grid">
-                      {playerColors
-                        .filter((favorColor) => favorColor !== color)
-                        .filter((favorColor) => activePlayerColors.includes(favorColor))
-                        .map((favorColor) => (
-                          <div className="resource-box" key={favorColor}>
-                            <img
-                              className="favor-icon"
-                              src={favorImageByColor[favorColor]}
-                              alt={`${favorColor} favor`}
-                            />
-                            <div>
-                              <button onClick={() => changeFavor(favorColor, -1)}>-</button>
-                              <strong>{player.favors[favorColor]}</strong>
-                              <button onClick={() => changeFavor(favorColor, 1)}>+</button>
+                    <strong>Player Cards</strong>
+                    {(player.cards ?? []).length === 0 ? (
+                      <p>No player cards.</p>
+                    ) : (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: '0.75rem',
+                          alignItems: 'flex-start',
+                          marginTop: '0.6rem',
+                        }}
+                      >
+                        {player.cards.map((card) => (
+                          <div
+                            key={card.id}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.35rem',
+                              width: '7.9rem',
+                            }}
+                          >
+                            <div className="card-picture-only">
+                              <GameCardView card={card} size="small" />
                             </div>
+                            <button
+  onClick={() => {
+    playSound('cardMove');
+    scrapPlayerCardFromPlayer(color, card.id);
+  }}
+>
+  Scrap
+</button>
+
+<button
+  onClick={() => {
+    playSound('cardMove');
+    removePlayerCardFromPlayer(color, card.id);
+  }}
+>
+  Remove
+</button>
                           </div>
                         ))}
-                    </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="subsection">
@@ -542,32 +619,43 @@ export default function PlayerBoards() {
                     </div>
                   </div>
 
-                  <div className="inline-controls">
-                    <img
-                      className="player-piece-icon"
-                      src={shipImageByColor[color]}
-                      alt={`${color} ship`}
-                    />
-                    <span>{player.ships}</span>
-                  </div>
+                  <div
+  style={{
+    display: 'flex',
+    flexDirection: 'row',
+    gap: '0.75rem',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  }}
+>
+  <div className="inline-controls">
+    <img
+      className="player-piece-icon"
+      src={shipImageByColor[color]}
+      alt={`${color} ship`}
+    />
+    <span>{player.ships}</span>
+  </div>
 
-                  <div className="inline-controls">
-                    <img
-                      className="player-piece-icon"
-                      src={cityImageByColor[color]}
-                      alt={`${color} city`}
-                    />
-                    <span>{player.cities}</span>
-                  </div>
+  <div className="inline-controls">
+    <img
+      className="player-piece-icon"
+      src={cityImageByColor[color]}
+      alt={`${color} city`}
+    />
+    <span>{player.cities}</span>
+  </div>
 
-                  <div className="inline-controls">
-                    <img
-                      className="player-piece-icon"
-                      src={starportImageByColor[color]}
-                      alt={`${color} starport`}
-                    />
-                    <span>{player.starports}</span>
-                  </div>
+  <div className="inline-controls">
+    <img
+      className="player-piece-icon"
+      src={starportImageByColor[color]}
+      alt={`${color} starport`}
+    />
+    <span>{player.starports}</span>
+  </div>
+</div>
 
                   <div className="subsection">
                     <strong>Resources</strong>
@@ -586,11 +674,11 @@ export default function PlayerBoards() {
                               <span>{resource}</span>
                             )}
                             <div>
-                              <button onClick={() => changeResource(resource as keyof typeof player.resources, -1)}>
+                              <button onClick={() => changeResource(resource as ResourceType, -1)}>
                                 -
                               </button>
                               <strong>{value}</strong>
-                              <button onClick={() => changeResource(resource as keyof typeof player.resources, 1)}>
+                              <button onClick={() => changeResource(resource as ResourceType, 1)}>
                                 +
                               </button>
                             </div>
@@ -599,50 +687,74 @@ export default function PlayerBoards() {
                     </div>
                   </div>
 
-                  {gameSetup.optionalTokens.caretakersGolems && (
-                    <div className="subsection">
-                      <strong>Golems</strong>
-                      <div className="resource-grid">
-                        {golemTypes.map((golemType) => (
-                          <div className="resource-box" key={golemType}>
-                            <img
-                              className="resource-icon"
-                              src={golemImageByType[golemType]}
-                              alt={golemType}
-                            />
-                            <div>
-                              <button onClick={() => toggleGolem(golemType)}>
-                                {player.golems[golemType] ? 'On' : 'Off'}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                 {gameSetup.optionalTokens.caretakersGolems && (
+  <div className="subsection">
+    <strong>Golems</strong>
+    <div className="golem-grid">
+      {golemTypes.map((golemType) => (
+        <div className="golem-box" key={golemType}>
+          <img
+            className="resource-icon"
+            src={golemImageByType[golemType]}
+            alt={golemType}
+          />
+          <div>
+            <button onClick={() => toggleGolem(golemType)}>
+              {player.golems[golemType] ? 'On' : 'Off'}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
-                  <div>
-                    <strong>Outrage</strong>
-                    <div className="chip-row">
-                      {outrageOptions.map((resource) => (
-                        <button
-                          key={resource}
-                          className={player.outrage.includes(resource) ? 'selected-chip' : ''}
-                          onClick={() => toggleOutrage(resource)}
-                        >
-                          {resourceImageByType[resource] ? (
-                            <img
-                              className="resource-chip-icon"
-                              src={resourceImageByType[resource]}
-                              alt={resource}
-                            />
-                          ) : (
-                            resource
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <div className="subsection">
+  <strong>Outrage</strong>
+  <div
+    className="chip-row"
+    style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+      justifyItems: 'center',
+      alignItems: 'center',
+      rowGap: '1.25rem',
+      columnGap: '0.6rem',
+      width: '100%',
+    }}
+  >
+    {outrageOptions.map((resource) => (
+      <button
+        key={resource}
+        className={player.outrage.includes(resource) ? 'selected-chip' : ''}
+        onClick={() => toggleOutrage(resource)}
+        style={{
+          width: '3.8rem',
+          height: '3.8rem',
+          padding: '0.25rem',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {resourceImageByType[resource] ? (
+          <img
+            className="resource-chip-icon"
+            src={resourceImageByType[resource]}
+            alt={resource}
+            style={{
+              width: '3rem',
+              height: '3rem',
+              objectFit: 'contain',
+            }}
+          />
+        ) : (
+          resource
+        )}
+      </button>
+    ))}
+  </div>
+</div>
                 </div>
               </div>
             );

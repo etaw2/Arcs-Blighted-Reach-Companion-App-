@@ -5,14 +5,23 @@ import {
   allCourtCards,
   allEdictCards,
   allLawCards,
+  allPlayerAreaCards,
   allSummitCards,
 } from '../CardData';
-import type { ActionCard, CourtCard, GameCard, RuleCard } from '../gameState';
+import type {
+  ActionCard,
+  CourtCard,
+  GameCard,
+  PlayerCard,
+  PlayerColor,
+  RuleCard,
+} from '../gameState';
 import GameCardView from './GameCardView';
 import { playSound } from '../utils/sound';
 
 const EMPTY_COURT_CARDS: CourtCard[] = [];
 const EMPTY_RULE_CARDS: RuleCard[] = [];
+const EMPTY_PLAYER_CARDS: PlayerCard[] = [];
 const EMPTY_ACTION_CARDS: ActionCard[] = [];
 const EMPTY_SCRAP_CARDS: GameCard[] = [];
 
@@ -82,7 +91,7 @@ function sortById<T extends { id: string }>(cards: T[]): T[] {
   });
 }
 
-function getCourtGroupKey(card: CourtCard) {
+function getCourtGroupKey(card: GameCard) {
   return card.id.split('-')[0];
 }
 
@@ -90,8 +99,8 @@ function isFaithfulActionCard(card: ActionCard) {
   return /^F\d+-/.test(card.id) && !card.id.startsWith('F5-');
 }
 
-function groupCourtCards(cards: CourtCard[]) {
-  return cards.reduce<Record<string, CourtCard[]>>((groups, card) => {
+function groupCardsByCourtKey<T extends GameCard>(cards: T[]) {
+  return cards.reduce<Record<string, T[]>>((groups, card) => {
     const groupKey = getCourtGroupKey(card);
 
     if (!groups[groupKey]) {
@@ -101,6 +110,10 @@ function groupCourtCards(cards: CourtCard[]) {
     groups[groupKey].push(card);
     return groups;
   }, {});
+}
+
+function capitalizePlayerColor(color: PlayerColor) {
+  return color.charAt(0).toUpperCase() + color.slice(1);
 }
 
 function getCardSearchText(card: GameCard) {
@@ -192,6 +205,44 @@ function CardTile({
   );
 }
 
+function AddToPlayerMenu({
+  card,
+  activePlayerColors,
+  onAdd,
+}: {
+  card: CourtCard | PlayerCard;
+  activePlayerColors: PlayerColor[];
+  onAdd: (color: PlayerColor, card: CourtCard | PlayerCard) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.35rem',
+      }}
+    >
+      <button onClick={() => setIsOpen((prev) => !prev)}>
+        {isOpen ? 'Cancel' : 'Add to Player'}
+      </button>
+
+      {isOpen &&
+        activePlayerColors.map((color) => (
+          <button
+            key={color}
+            onClick={() => {
+              onAdd(color, card);
+              setIsOpen(false);
+            }}
+          >
+            Add to {capitalizePlayerColor(color)}
+          </button>
+        ))}
+    </div>
+  );
+}
 
 export default function CardsPanel() {
   const gameState = useGameStore((state) => state.gameState);
@@ -207,6 +258,8 @@ export default function CardsPanel() {
   const addActionCardToDeck = useGameStore((state) => state.addActionCardToDeck);
   const removeActionCardFromDeck = useGameStore((state) => state.removeActionCardFromDeck);
   const scrapActionCard = useGameStore((state) => state.scrapActionCard);
+  const removeCardFromScrapPile = useGameStore((state) => state.removeCardFromScrapPile);
+  const addPlayerCardToPlayer = useGameStore((state) => state.addPlayerCardToPlayer);
 
   const [showAvailableCourt, setShowAvailableCourt] = useState(false);
 
@@ -225,6 +278,8 @@ export default function CardsPanel() {
   const summit = gameState.rules?.summit ?? EMPTY_RULE_CARDS;
   const actionDeck = gameState.actionDeck?.inDeck ?? EMPTY_ACTION_CARDS;
   const scrapPile = gameState.scrapPile?.scrap ?? EMPTY_SCRAP_CARDS;
+  const playerCardPool = gameState.playerCardPool?.available ?? allPlayerAreaCards ?? EMPTY_PLAYER_CARDS;
+  const activePlayerColors = gameState.gameSetup.playersInGame;
 
   const scrappedIds = useMemo(() => new Set(scrapPile.map((card) => card.id)), [scrapPile]);
   const courtIds = useMemo(() => new Set(courtDeck.map((card) => card.id)), [courtDeck]);
@@ -232,13 +287,32 @@ export default function CardsPanel() {
   const edictIds = useMemo(() => new Set(edicts.map((card) => card.id)), [edicts]);
   const summitIds = useMemo(() => new Set(summit.map((card) => card.id)), [summit]);
   const actionDeckIds = useMemo(() => new Set(actionDeck.map((card) => card.id)), [actionDeck]);
+  const playerAreaCardIds = useMemo(
+    () => new Set(gameState.players.flatMap((player) => (player.cards ?? []).map((card) => card.id))),
+    [gameState.players]
+  );
 
   const availableCourtCards = useMemo(
     () =>
       sortById(
-        allCourtCards.filter((card) => !courtIds.has(card.id) && !scrappedIds.has(card.id))
+        allCourtCards.filter(
+          (card) =>
+            !courtIds.has(card.id) &&
+            !scrappedIds.has(card.id) &&
+            !playerAreaCardIds.has(card.id)
+        )
       ),
-    [courtIds, scrappedIds]
+    [courtIds, scrappedIds, playerAreaCardIds]
+  );
+
+  const availablePlayerCards = useMemo(
+    () =>
+      sortById(
+        playerCardPool.filter(
+          (card) => !scrappedIds.has(card.id) && !playerAreaCardIds.has(card.id)
+        )
+      ),
+    [playerCardPool, scrappedIds, playerAreaCardIds]
   );
 
   const filteredAvailableCourtCards = useMemo(() => {
@@ -251,21 +325,40 @@ export default function CardsPanel() {
     return availableCourtCards.filter((card) => getCardSearchText(card).includes(searchText));
   }, [availableCourtCards, availableCourtSearch]);
 
+  const filteredAvailablePlayerCards = useMemo(() => {
+    const searchText = availableCourtSearch.trim().toLowerCase();
+
+    if (!searchText) {
+      return availablePlayerCards;
+    }
+
+    return availablePlayerCards.filter((card) => getCardSearchText(card).includes(searchText));
+  }, [availablePlayerCards, availableCourtSearch]);
+
   const availableCourtCardsByGroup = useMemo(
-    () => groupCourtCards(filteredAvailableCourtCards),
+    () => groupCardsByCourtKey(filteredAvailableCourtCards),
     [filteredAvailableCourtCards]
   );
 
+  const availablePlayerCardsByGroup = useMemo(
+    () => groupCardsByCourtKey(filteredAvailablePlayerCards),
+    [filteredAvailablePlayerCards]
+  );
+
   const availableCourtGroupOrder = useMemo(() => {
-    const unknownGroups = Object.keys(availableCourtCardsByGroup)
+    const availableGroupKeys = new Set([
+      ...Object.keys(availableCourtCardsByGroup),
+      ...Object.keys(availablePlayerCardsByGroup),
+    ]);
+    const unknownGroups = [...availableGroupKeys]
       .filter((groupKey) => !COURT_GROUP_ORDER.includes(groupKey))
       .sort((a, b) => a.localeCompare(b));
 
     return [
-      ...COURT_GROUP_ORDER.filter((groupKey) => availableCourtCardsByGroup[groupKey]),
+      ...COURT_GROUP_ORDER.filter((groupKey) => availableGroupKeys.has(groupKey)),
       ...unknownGroups,
     ];
-  }, [availableCourtCardsByGroup]);
+  }, [availableCourtCardsByGroup, availablePlayerCardsByGroup]);
 
   const availableLawCards = useMemo(
     () =>
@@ -314,6 +407,29 @@ export default function CardsPanel() {
         )
       ),
     [actionDeckIds, scrappedIds]
+  );
+
+  const renderAddToPlayerButtons = (card: CourtCard | PlayerCard) => (
+    <AddToPlayerMenu
+      card={card}
+      activePlayerColors={activePlayerColors}
+      onAdd={(color, selectedCard) => {
+        playSound('cardMove');
+        addPlayerCardToPlayer(color, selectedCard);
+      }}
+    />
+  );
+
+  const renderMoveCourtCardToPlayerButtons = (card: CourtCard) => (
+    <AddToPlayerMenu
+      card={card}
+      activePlayerColors={activePlayerColors}
+      onAdd={(color, selectedCard) => {
+        playSound('cardMove');
+        addPlayerCardToPlayer(color, selectedCard);
+        removeCourtCardFromDeck(selectedCard.id);
+      }}
+    />
   );
 
   return (
@@ -412,7 +528,7 @@ export default function CardsPanel() {
             <input
               value={availableCourtSearch}
               onChange={(event) => setAvailableCourtSearch(event.target.value)}
-              placeholder="Search available court cards..."
+              placeholder="Search available cards..."
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -426,6 +542,7 @@ export default function CardsPanel() {
             />
 
             {availableCourtCards.length === 0 &&
+availablePlayerCards.length === 0 &&
 availableLawCards.length === 0 &&
 availableEdictCards.length === 0 &&
 availableSummitCards.length === 0 &&
@@ -433,6 +550,7 @@ availableFaithfulActionCards.length === 0 &&
 availableActionCards.length === 0? (
               <p>No available court cards.</p>
             ) : filteredAvailableCourtCards.length === 0 &&
+  filteredAvailablePlayerCards.length === 0 &&
   availableLawCards.filter((card) =>
     getCardSearchText(card).includes(availableCourtSearch.trim().toLowerCase())
   ).length === 0 &&
@@ -466,20 +584,28 @@ availableActionCards.length === 0? (
                     </h3>
 
                     <CardGrid>
-                      {sortById(availableCourtCardsByGroup[groupKey]).map((card) => (
+                      {sortById(availableCourtCardsByGroup[groupKey] ?? []).map((card) => (
                         <CardTile
                           key={card.id}
                           actions={
-                            <button
-                              onClick={() => {
-                                playSound('cardMove');
-                                addCourtCardToDeck(card);
-                              }}
-                            >
-                              Add to Court
-                            </button>
+                            <>
+                              <button
+                                onClick={() => {
+                                  playSound('cardMove');
+                                  addCourtCardToDeck(card);
+                                }}
+                              >
+                                Add to Court
+                              </button>
+                              {renderAddToPlayerButtons(card)}
+                            </>
                           }
                         >
+                          <CardPicture card={card} />
+                        </CardTile>
+                      ))}
+                      {sortById(availablePlayerCardsByGroup[groupKey] ?? []).map((card) => (
+                        <CardTile key={card.id} actions={renderAddToPlayerButtons(card)}>
                           <CardPicture card={card} />
                         </CardTile>
                       ))}
@@ -745,6 +871,7 @@ availableActionCards.length === 0? (
                         >
                           Remove
                         </button>
+                        {renderMoveCourtCardToPlayerButtons(card)}
                       </>
                     }
                   >
@@ -940,10 +1067,22 @@ availableActionCards.length === 0? (
             ) : (
               <CardGrid>
                 {sortById(scrapPile).map((card) => (
-                  <CardTile key={card.id}>
-                    <CardPicture card={card} />
-                  </CardTile>
-                ))}
+  <CardTile
+    key={card.id}
+    actions={
+      <button
+        onClick={() => {
+          playSound('cardMove');
+          removeCardFromScrapPile(card.id);
+        }}
+      >
+        Move to Available
+      </button>
+    }
+  >
+    <CardPicture card={card} />
+  </CardTile>
+))}
               </CardGrid>
             )}
           </div>
