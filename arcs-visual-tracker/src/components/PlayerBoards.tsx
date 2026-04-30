@@ -153,7 +153,7 @@ export default function PlayerBoards() {
 
   return (
     <section className="player-section">
-      <h2>Player Boards</h2>
+      <h2>Player Areas</h2>
       <div className="player-grid">
         {playerColors
           .filter((color) => activePlayerColors.includes(color))
@@ -238,11 +238,7 @@ export default function PlayerBoards() {
               <div key={color} className="player-card">
                 <h3 className={`player-title ${color}`}>{color.toUpperCase()}</h3>
 
-                <img
-                  className="player-board-image"
-                  src={playerBoardImageByColor[color]}
-                  alt={`${color} player board`}
-                />
+                
 
                 <div className="player-controls">
                   {gameSetup.playersWithFlagships.includes(color) && (
@@ -713,28 +709,52 @@ export default function PlayerBoards() {
   </div>
 )}
 
-                  <div>
-                    <strong>Outrage</strong>
-                    <div className="chip-row">
-                      {outrageOptions.map((resource) => (
-                        <button
-                          key={resource}
-                          className={player.outrage.includes(resource) ? 'selected-chip' : ''}
-                          onClick={() => toggleOutrage(resource)}
-                        >
-                          {resourceImageByType[resource] ? (
-                            <img
-                              className="resource-chip-icon"
-                              src={resourceImageByType[resource]}
-                              alt={resource}
-                            />
-                          ) : (
-                            resource
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <div className="subsection">
+  <strong>Outrage</strong>
+  <div
+    className="chip-row"
+    style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+      justifyItems: 'center',
+      alignItems: 'center',
+      rowGap: '1.25rem',
+      columnGap: '0.6rem',
+      width: '100%',
+    }}
+  >
+    {outrageOptions.map((resource) => (
+      <button
+        key={resource}
+        className={player.outrage.includes(resource) ? 'selected-chip' : ''}
+        onClick={() => toggleOutrage(resource)}
+        style={{
+          width: '3.8rem',
+          height: '3.8rem',
+          padding: '0.25rem',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {resourceImageByType[resource] ? (
+          <img
+            className="resource-chip-icon"
+            src={resourceImageByType[resource]}
+            alt={resource}
+            style={{
+              width: '3rem',
+              height: '3rem',
+              objectFit: 'contain',
+            }}
+          />
+        ) : (
+          resource
+        )}
+      </button>
+    ))}
+  </div>
+</div>
                 </div>
               </div>
             );
