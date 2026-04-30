@@ -124,6 +124,152 @@ const clearSeatsFromMap = (map: GameState['map']): GameState['map'] =>
   ) as GameState['map'];
   
 
+
+const cleanGameStateForSetup = (gameState: GameState, gameSetup: GameSetup): GameState => {
+  const cityReturns: Partial<Record<PlayerColor, number>> = {};
+  const starportReturns: Partial<Record<PlayerColor, number>> = {};
+
+  const returnCity = (color: PlayerColor | 'free') => {
+    if (color === 'free') {
+      return;
+    }
+
+    cityReturns[color] = (cityReturns[color] ?? 0) + 1;
+  };
+
+  const returnStarport = (color: PlayerColor | 'free') => {
+    if (color === 'free') {
+      return;
+    }
+
+    starportReturns[color] = (starportReturns[color] ?? 0) + 1;
+  };
+
+  const allowedFlagshipColors = new Set(gameSetup.playersWithFlagships);
+  const planetKeys: PlanetKey[] = ['planetTri', 'planetMoon', 'planetHex'];
+
+  const nextMap = Object.fromEntries(
+    Object.entries(gameState.map).map(([clusterId, cluster]) => {
+      const nextCluster = {
+        ...cluster,
+        gate: {
+          ...cluster.gate,
+          flagships: cluster.gate.flagships.filter((color) => allowedFlagshipColors.has(color)),
+        },
+      };
+
+      if (!gameSetup.optionalStructures.gatePorts && nextCluster.gate.port) {
+        returnStarport(nextCluster.gate.port.color);
+        nextCluster.gate = {
+          ...nextCluster.gate,
+          port: null,
+        };
+      }
+
+      if (!gameSetup.optionalStructures.gateStations && nextCluster.gate.station) {
+        returnCity(nextCluster.gate.station.color);
+        nextCluster.gate = {
+          ...nextCluster.gate,
+          station: null,
+        };
+      }
+
+      if (!gameSetup.optionalTokens.foundersSeatTokens && nextCluster.gate.station) {
+        nextCluster.gate = {
+          ...nextCluster.gate,
+          station: {
+            ...nextCluster.gate.station,
+            seat: false,
+            seatNumber: null,
+          },
+        };
+      }
+
+      planetKeys.forEach((planetKey) => {
+        const planet = nextCluster[planetKey];
+        let nextPlanet = {
+          ...planet,
+          flagships: planet.flagships.filter((color) => allowedFlagshipColors.has(color)),
+        };
+
+        if (!gameSetup.optionalTokens.pathfindersPortal) {
+          nextPlanet = {
+            ...nextPlanet,
+            portal: false,
+          };
+        }
+
+        if (!gameSetup.optionalTokens.hegemonsBanner) {
+          nextPlanet = {
+            ...nextPlanet,
+            banner: false,
+          };
+        }
+
+        if (!gameSetup.optionalTokens.planetBreakersBroken) {
+          nextPlanet = {
+            ...nextPlanet,
+            broken: false,
+          };
+        }
+
+        if (!gameSetup.optionalStructures.cloudCities && nextPlanet.cloudCity) {
+          returnCity(nextPlanet.cloudCity.color);
+          nextPlanet = {
+            ...nextPlanet,
+            cloudCity: null,
+          };
+        }
+
+        if (!gameSetup.optionalTokens.foundersSeatTokens) {
+          nextPlanet = {
+            ...nextPlanet,
+            cloudCity: nextPlanet.cloudCity
+              ? {
+                  ...nextPlanet.cloudCity,
+                  seat: false,
+                  seatNumber: null,
+                }
+              : null,
+            buildings: nextPlanet.buildings.map((building) => ({
+              ...building,
+              seat: false,
+              seatNumber: null,
+            })),
+          };
+        }
+
+        nextCluster[planetKey] = nextPlanet;
+      });
+
+      return [clusterId, nextCluster];
+    })
+  ) as GameState['map'];
+
+  const shouldClearGolems = !gameSetup.optionalTokens.caretakersGolems;
+
+  const nextPlayers = gameState.players.map((player) => ({
+    ...player,
+    cities: player.cities + (cityReturns[player.color] ?? 0),
+    starports: player.starports + (starportReturns[player.color] ?? 0),
+    golems: shouldClearGolems
+      ? {
+          warrior: false,
+          seeker: false,
+          protector: false,
+          harvester: false,
+        }
+      : player.golems,
+  }));
+
+  return {
+    ...gameState,
+    gameSetup,
+    players: nextPlayers,
+    map: nextMap,
+  };
+};
+
 const removeFlagshipColorFromMap = (
   map: GameState['map'],
   color: PlayerColor
@@ -376,13 +522,7 @@ exportGameSaveFile: (saveName) => {
       });
 
       return {
-        gameState: {
-          ...state.gameState,
-          gameSetup: nextGameSetup,
-          map: nextGameSetup.optionalTokens.foundersSeatTokens
-            ? state.gameState.map
-            : clearSeatsFromMap(state.gameState.map),
-        },
+        gameState: cleanGameStateForSetup(state.gameState, nextGameSetup),
       };
     }),
 
