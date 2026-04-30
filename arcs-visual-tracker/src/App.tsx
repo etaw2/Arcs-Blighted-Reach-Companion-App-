@@ -1372,7 +1372,7 @@ export default function App() {
                 <h2>By Ethan Klein</h2>
 
                 <p>
-                  Use this app to track your Blighted Reach Campaign board state, player boards, and cards. With this app you can now play base Arcs while you have a campaign in progress or track multiple campaigns at once.
+                  Use this app to track your Blighted Reach Campaign board state, player areas, and cards. With this app you can now play base Arcs while you have a campaign in progress or track multiple campaigns at once.
                 </p>
 
                 <div
@@ -1625,7 +1625,7 @@ export default function App() {
                 </span>
               )}
             </h1>
-            <p>Click the board spaces to edit gates and planets. Cards and Player boards are editable below.</p>
+            <p>Click the board spaces to edit gates and planets. cards and player areas are editable below.</p>
           </div>
 
           <div className="topbar-actions">
