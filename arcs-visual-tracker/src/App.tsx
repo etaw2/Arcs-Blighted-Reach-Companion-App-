@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import BoardOverlay from './components/BoardOverlay';
 import CardsPanel from './components/CardsPanel';
 import PlayerBoards from './components/PlayerBoards';
@@ -13,12 +13,6 @@ import {
   setMusicVolume,
   setSfxVolume,
 } from './utils/sound';
-import {
-  createSaveFileName,
-  deleteSaveFile,
-  downloadSaveFile,
-  readSaveFileFromInput,
-} from './utils/saveFiles';
 
 const allPlayerColors: PlayerColor[] = ['blue', 'red', 'yellow', 'white'];
 
@@ -36,7 +30,45 @@ const setupTokenImages = {
   planetBreakersBroken: '/assets/broken.png',
   foundersSeatTokens: '/assets/seat1.png',
 };
+type StoredSaveEntry = {
+  name: string;
+  fileName: string;
+  updatedAt: number;
+};
 
+type StoredSaveListResult =
+  | {
+      ok: true;
+      saves: StoredSaveEntry[];
+    }
+  | {
+      ok: false;
+      reason?: string;
+    };
+
+type StoredSaveResult =
+  | {
+      ok: true;
+      name?: string;
+      fileName?: string;
+      saveFile?: unknown;
+    }
+  | {
+      ok: false;
+      reason?: string;
+    };
+
+declare global {
+  interface Window {
+    electronAPI?: {
+      platform?: string;
+      listGameSaves?: () => Promise<StoredSaveListResult>;
+      saveNamedGameFile?: (saveName: string, saveFile: unknown) => Promise<StoredSaveResult>;
+      openNamedGameFile?: (fileName: string) => Promise<StoredSaveResult>;
+      deleteNamedGameFile?: (fileName: string) => Promise<StoredSaveResult>;
+    };
+  }
+}
 function SetupIconButton({
   label,
   selected,
@@ -100,9 +132,19 @@ export default function App() {
   const [showContactPopup, setShowContactPopup] = useState(false);
   const [musicVolume, setMusicVolumeState] = useState(getMusicVolume);
   const [sfxVolume, setSfxVolumeState] = useState(getSfxVolume);
+  const [savePickerMode, setSavePickerMode] = useState<'open' | 'delete' | null>(null);
+  const [storedSaves, setStoredSaves] = useState<StoredSaveEntry[]>([]);
+  const [savePickerLoading, setSavePickerLoading] = useState(false);
+  const [savePickerError, setSavePickerError] = useState('');
+  const [saveNameModalOpen, setSaveNameModalOpen] = useState(false);
+  const [saveNameDraft, setSaveNameDraft] = useState('arcs-campaign-save');
+  const [currentSaveName, setCurrentSaveName] = useState('arcs-campaign-save');
+  const [saveNameError, setSaveNameError] = useState('');
+  const [saveNameSaving, setSaveNameSaving] = useState(false);
+  const [saveStatusMessage, setSaveStatusMessage] = useState('');
 
   const titleMusicRef = useRef<HTMLAudioElement | null>(null);
-  const openSaveInputRef = useRef<HTMLInputElement | null>(null);
+  const saveNameInputRef = useRef<HTMLInputElement | null>(null);
 
   const startTitleMusic = () => {
     if (titleMusicRef.current) {
@@ -157,6 +199,31 @@ export default function App() {
       titleMusicRef.current.play().catch(() => {});
     }
   }, [musicVolume]);
+
+  useEffect(() => {
+    if (!saveStatusMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSaveStatusMessage('');
+    }, 2200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [saveStatusMessage]);
+
+  useEffect(() => {
+    if (!saveNameModalOpen) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      saveNameInputRef.current?.focus();
+      saveNameInputRef.current?.select();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [saveNameModalOpen]);
 
   const stopTitleMusic = () => {
     titleMusicRef.current?.pause();
@@ -295,24 +362,166 @@ export default function App() {
     playSound('panelClose');
     startTitleMusic();
     resetGame();
+    setCurrentSaveName('arcs-campaign-save');
+    setSaveNameDraft('arcs-campaign-save');
+    setSaveStatusMessage('');
     setShowTitleScreen(false);
     setSoundSettingsOpen(false);
     setShowHelpPage(false);
   };
 
-  const handleSaveToFile = async () => {
+  const handleSaveToFile = () => {
     playSound('panelClose');
+    setSaveNameSaving(false);
+    setSaveNameDraft(currentSaveName || 'arcs-campaign-save');
+    setSaveNameError('');
+    setSaveStatusMessage('');
+    setSaveNameModalOpen(true);
+  };
 
-    const saveName = window.prompt('Save file name:', 'arcs-campaign-save');
-
-    if (saveName === null) {
+  const closeSaveNameModal = () => {
+    if (saveNameSaving) {
       return;
     }
 
-    const saveFile = exportGameSaveFile(saveName);
-    const fileName = createSaveFileName(saveName);
+    playSound('panelClose');
+    setSaveNameModalOpen(false);
+    setSaveNameError('');
+  };
 
-    await downloadSaveFile(saveFile, fileName);
+  const handleConfirmSaveName = async () => {
+    playSound('panelClose');
+
+    const saveName = (saveNameInputRef.current?.value ?? saveNameDraft).trim();
+
+    if (!saveName) {
+      setSaveNameError('Enter a save name.');
+      return;
+    }
+
+    if (!window.electronAPI?.saveNamedGameFile) {
+      setSaveNameError('Desktop saving is only available in the app version.');
+      return;
+    }
+
+    setSaveNameSaving(true);
+    setSaveNameError('');
+
+    try {
+      const saveFile = exportGameSaveFile(saveName);
+      const result = await window.electronAPI.saveNamedGameFile(saveName, saveFile);
+
+      if (!result.ok) {
+        setSaveNameError(result.reason ?? 'Could not save campaign.');
+        return;
+      }
+
+      const savedName = result.name ?? saveName;
+      setCurrentSaveName(savedName);
+      setSaveNameDraft(savedName);
+      setSaveNameModalOpen(false);
+      setSaveNameError('');
+      setSaveStatusMessage(`Saved: ${savedName}`);
+    } catch (error) {
+      setSaveNameError(error instanceof Error ? error.message : 'Could not save campaign.');
+    } finally {
+      setSaveNameSaving(false);
+    }
+  };
+
+  const openStoredSavePicker = async (mode: 'open' | 'delete') => {
+    playSound('panelClose');
+    setSavePickerMode(mode);
+    setSavePickerLoading(true);
+    setSavePickerError('');
+
+    if (!window.electronAPI?.listGameSaves) {
+      setStoredSaves([]);
+      setSavePickerError('Stored saves are only available in the app version.');
+      setSavePickerLoading(false);
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.listGameSaves();
+
+      if (!result.ok) {
+        setStoredSaves([]);
+        setSavePickerError(result.reason ?? 'Could not load saves.');
+        return;
+      }
+
+      setStoredSaves(result.saves);
+    } catch (error) {
+      setStoredSaves([]);
+      setSavePickerError(error instanceof Error ? error.message : 'Could not load saves.');
+    } finally {
+      setSavePickerLoading(false);
+    }
+  };
+
+  const handleOpenStoredSave = async (save: StoredSaveEntry) => {
+    playSound('panelClose');
+
+    if (!window.electronAPI?.openNamedGameFile) {
+      window.alert('Stored saves are only available in the app version.');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.openNamedGameFile(save.fileName);
+
+      if (!result.ok || !result.saveFile) {
+        window.alert(result.reason ?? 'Could not open save.');
+        return;
+      }
+
+      importGameSaveFile(result.saveFile as Parameters<typeof importGameSaveFile>[0]);
+      setCurrentSaveName(save.name || 'arcs-campaign-save');
+      setSaveNameDraft(save.name || 'arcs-campaign-save');
+      setSaveStatusMessage('');
+      stopTitleMusic();
+      setShowTitleScreen(false);
+      setSoundSettingsOpen(false);
+      setShowHelpPage(false);
+      setSavePickerMode(null);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Could not open save.');
+    }
+  };
+
+  const handleDeleteStoredSave = async (save: StoredSaveEntry) => {
+    playSound('panelClose');
+
+    const confirmed = window.confirm(`Delete "${save.name}"? This cannot be undone.`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    if (!window.electronAPI?.deleteNamedGameFile) {
+      window.alert('Stored saves are only available in the app version.');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.deleteNamedGameFile(save.fileName);
+
+      if (!result.ok) {
+        window.alert(result.reason ?? 'Could not delete save.');
+        return;
+      }
+
+      setStoredSaves((prev) => prev.filter((entry) => entry.fileName !== save.fileName));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Could not delete save.');
+    }
+  };
+
+  const closeStoredSavePicker = () => {
+    playSound('panelClose');
+    setSavePickerMode(null);
+    setSavePickerError('');
   };
 
   const handleResetGame = () => {
@@ -332,42 +541,162 @@ export default function App() {
   };
 
   const handleOpenSaveClick = () => {
-    playSound('panelClose');
     startTitleMusic();
-    openSaveInputRef.current?.click();
-  };
-
-  const handleOpenSaveFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-
-    event.target.value = '';
-
-    if (!file) {
-      return;
-    }
-
-    try {
-      const saveFile = await readSaveFileFromInput(file);
-
-      importGameSaveFile(saveFile);
-      stopTitleMusic();
-      setShowTitleScreen(false);
-      setSoundSettingsOpen(false);
-      setShowHelpPage(false);
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'Could not open save file.');
-    }
+    openStoredSavePicker('open');
   };
 
   const handleDeleteSave = async () => {
-    playSound('panelClose');
-
-    const result = await deleteSaveFile();
-
-    if (!result.ok) {
-      window.alert(result.reason);
-    }
+    openStoredSavePicker('delete');
   };
+
+  useEffect(() => {
+    if (!saveNameModalOpen) {
+      return;
+    }
+
+    useEffect(() => {
+  const shouldShowMainScrollbar = !showTitleScreen && gameSetup.setupComplete;
+
+  document.body.classList.toggle('show-main-scrollbar', shouldShowMainScrollbar);
+  document.documentElement.classList.toggle('show-main-scrollbar', shouldShowMainScrollbar);
+
+  return () => {
+    document.body.classList.remove('show-main-scrollbar');
+    document.documentElement.classList.remove('show-main-scrollbar');
+  };
+}, [showTitleScreen, gameSetup.setupComplete]);
+
+    const handleSaveNameKeyDown = (event: KeyboardEvent) => {
+      if (!saveNameModalOpen || saveNameSaving) {
+        return;
+      }
+
+      const input = saveNameInputRef.current;
+
+      if (!input) {
+        return;
+      }
+
+      input.focus();
+
+      const stopAndPrevent = () => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      };
+
+      const setInputValue = (nextValue: string, nextCursor: number) => {
+        input.value = nextValue;
+        input.setSelectionRange(nextCursor, nextCursor);
+        setSaveNameError('');
+      };
+
+      const selectionStart = input.selectionStart ?? input.value.length;
+      const selectionEnd = input.selectionEnd ?? selectionStart;
+      const left = input.value.slice(0, selectionStart);
+      const right = input.value.slice(selectionEnd);
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+        stopAndPrevent();
+        input.select();
+        return;
+      }
+
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        event.stopPropagation();
+        return;
+      }
+
+      if (event.key === 'Enter') {
+        stopAndPrevent();
+        handleConfirmSaveName();
+        return;
+      }
+
+      if (event.key === 'Escape') {
+        stopAndPrevent();
+        closeSaveNameModal();
+        return;
+      }
+
+      if (event.key === 'Backspace') {
+        stopAndPrevent();
+
+        if (selectionStart !== selectionEnd) {
+          setInputValue(left + right, selectionStart);
+          return;
+        }
+
+        if (selectionStart > 0) {
+          setInputValue(
+            input.value.slice(0, selectionStart - 1) + input.value.slice(selectionEnd),
+            selectionStart - 1
+          );
+        }
+
+        return;
+      }
+
+      if (event.key === 'Delete') {
+        stopAndPrevent();
+
+        if (selectionStart !== selectionEnd) {
+          setInputValue(left + right, selectionStart);
+          return;
+        }
+
+        if (selectionStart < input.value.length) {
+          setInputValue(
+            input.value.slice(0, selectionStart) + input.value.slice(selectionStart + 1),
+            selectionStart
+          );
+        }
+
+        return;
+      }
+
+      if (event.key === 'ArrowLeft') {
+        stopAndPrevent();
+        const nextCursor = Math.max(0, selectionStart - 1);
+        input.setSelectionRange(nextCursor, nextCursor);
+        return;
+      }
+
+      if (event.key === 'ArrowRight') {
+        stopAndPrevent();
+        const nextCursor = Math.min(input.value.length, selectionEnd + 1);
+        input.setSelectionRange(nextCursor, nextCursor);
+        return;
+      }
+
+      if (event.key === 'Home') {
+        stopAndPrevent();
+        input.setSelectionRange(0, 0);
+        return;
+      }
+
+      if (event.key === 'End') {
+        stopAndPrevent();
+        input.setSelectionRange(input.value.length, input.value.length);
+        return;
+      }
+
+      if (event.key.length === 1) {
+        stopAndPrevent();
+        const nextValue = left + event.key + right;
+        setInputValue(nextValue, selectionStart + event.key.length);
+        return;
+      }
+
+      event.stopPropagation();
+    };
+
+    window.addEventListener('keydown', handleSaveNameKeyDown, true);
+
+    return () => {
+      window.removeEventListener('keydown', handleSaveNameKeyDown, true);
+    };
+  }, [saveNameModalOpen, saveNameSaving]);
 
   const handleBackToMainMenuFromSetup = () => {
     playSound('panelClose');
@@ -397,13 +726,225 @@ export default function App() {
 
   return (
     <>
-      <input
-        ref={openSaveInputRef}
-        type="file"
-        accept="application/json,.json"
-        style={{ display: 'none' }}
-        onChange={handleOpenSaveFile}
-      />
+      {saveNameModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 50000,
+            background: 'rgba(0, 0, 0, 0.76)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '2rem',
+          }}
+          onClick={closeSaveNameModal}
+        >
+          <div
+            style={{
+              width: 'min(92vw, 30rem)',
+              background: '#101010',
+              border: '1px solid rgba(255, 255, 255, 0.24)',
+              borderRadius: '1rem',
+              boxShadow: '0 24px 70px rgba(0, 0, 0, 0.75)',
+              padding: '1.25rem',
+              color: 'white',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '1rem',
+              }}
+            >
+              <h2 style={{ margin: 0 }}>Save Campaign</h2>
+
+              <button className="music-button" onClick={closeSaveNameModal} disabled={saveNameSaving}>
+                Close
+              </button>
+            </div>
+
+            <label
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.45rem',
+              }}
+            >
+              <span>Save name</span>
+              <input
+                ref={saveNameInputRef}
+                defaultValue={saveNameDraft}
+                onClick={(event) => event.stopPropagation()}
+                onFocus={() => {
+                  setSaveNameError('');
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    handleConfirmSaveName();
+                  }
+                }}
+                autoFocus
+                disabled={saveNameSaving}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(255, 255, 255, 0.28)',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  color: 'white',
+                  padding: '0.7rem 0.8rem',
+                  font: 'inherit',
+                }}
+              />
+            </label>
+
+            {saveNameError && <p style={{ color: '#ffb4b4', margin: 0 }}>{saveNameError}</p>}
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem',
+              }}
+            >
+              <button className="music-button" onClick={closeSaveNameModal} disabled={saveNameSaving}>
+                Cancel
+              </button>
+              <button className="music-button" onClick={handleConfirmSaveName} disabled={saveNameSaving}>
+                {saveNameSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {savePickerMode && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 50000,
+            background: 'rgba(0, 0, 0, 0.76)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '2rem',
+          }}
+          onClick={closeStoredSavePicker}
+        >
+          <div
+            style={{
+              width: 'min(92vw, 36rem)',
+              maxHeight: 'min(82vh, 42rem)',
+              background: '#101010',
+              border: '1px solid rgba(255, 255, 255, 0.24)',
+              borderRadius: '1rem',
+              boxShadow: '0 24px 70px rgba(0, 0, 0, 0.75)',
+              padding: '1.25rem',
+              color: 'white',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '1rem',
+              }}
+            >
+              <h2 style={{ margin: 0 }}>
+                {savePickerMode === 'open' ? 'Open Previous Save' : 'Delete Save'}
+              </h2>
+
+              <button className="music-button" onClick={closeStoredSavePicker}>
+                Close
+              </button>
+            </div>
+
+            {savePickerLoading && <p>Loading saves...</p>}
+
+            {!savePickerLoading && savePickerError && (
+              <p style={{ color: '#ffb4b4', margin: 0 }}>{savePickerError}</p>
+            )}
+
+            {!savePickerLoading && !savePickerError && storedSaves.length === 0 && (
+              <p style={{ margin: 0 }}>No saved campaigns found.</p>
+            )}
+
+            {!savePickerLoading && storedSaves.length > 0 && (
+              <div
+                style={{
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.65rem',
+                  paddingRight: '0.25rem',
+                }}
+              >
+                {storedSaves.map((save) => (
+                  <button
+                    key={save.fileName}
+                    className="music-button"
+                    onClick={() => {
+                      if (savePickerMode === 'open') {
+                        handleOpenStoredSave(save);
+                      } else {
+                        handleDeleteStoredSave(save);
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'stretch',
+                      gap: '0.25rem',
+                      padding: '0.8rem 1rem',
+                    }}
+                  >
+                    <strong>{save.name}</strong>
+                    <span style={{ opacity: 0.74, fontSize: '0.85rem' }}>
+                      Last saved: {new Date(save.updatedAt).toLocaleString()}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {saveStatusMessage && !saveNameModalOpen && !savePickerMode && !showTitleScreen && (
+        <div
+          style={{
+            position: 'fixed',
+            right: '1rem',
+            bottom: '1rem',
+            zIndex: 45000,
+            background: 'rgba(0, 0, 0, 0.82)',
+            border: '1px solid rgba(255, 255, 255, 0.24)',
+            borderRadius: '0.75rem',
+            color: 'white',
+            padding: '0.75rem 1rem',
+            boxShadow: '0 16px 42px rgba(0, 0, 0, 0.55)',
+          }}
+          onClick={() => setSaveStatusMessage('')}
+        >
+          {saveStatusMessage}
+        </div>
+      )}
 
       {showContactPopup && (
         <div

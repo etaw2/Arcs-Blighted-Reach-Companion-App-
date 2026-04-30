@@ -796,3 +796,24 @@ textarea,
   align-items: center;
   text-align: center;
 }
+html,
+body {
+    scrollbar-width: none;
+}
+
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+    }
+
+    html.show-main-scrollbar,
+    body.show-main-scrollbar {
+        scrollbar-width: auto;
+    }
+
+        html.show-main-scrollbar::-webkit-scrollbar,
+        body.show-main-scrollbar::-webkit-scrollbar {
+            width: auto;
+            height: auto;
+        }
