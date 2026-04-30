@@ -193,6 +193,8 @@ export const cardImages: Record<string, string> = {
 'F16-14': '/assets/cards/court/F16-14.jpg',
 'F16-15': '/assets/cards/court/F16-15.jpg',
 'F16-16': '/assets/cards/court/F16-16.jpg',
+'F16-09': '/assets/cards/rules/F16-09.jpg',
+'F16-10': '/assets/cards/rules/F16-10.jpg',
 
   'F2-13': '/assets/cards/player/F2-13.jpg',
   'F2-18': '/assets/cards/player/F2-18.jpg',

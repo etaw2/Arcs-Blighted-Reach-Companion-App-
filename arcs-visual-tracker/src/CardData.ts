@@ -1322,14 +1322,14 @@ export const allLawCards: RuleCard[] = withImages([
     category: 'rule',
     type: 'law',
     name: 'Seats & Feifs',
-    id: 'F10-09',
+    id: 'F16-09',
     number: 9,
   },
   {
     category: 'rule',
     type: 'law',
     name: 'Feudal Law',
-    id: 'F10-10',
+    id: 'F16-10',
     number: 10,
   },
 ]);
