@@ -1399,19 +1399,21 @@ availableActionCards.length === 0? (
       </div>
 
       <aside
-        className="panel"
-        style={{
-          width: '100%',
-          maxWidth: '18rem',
-          boxSizing: 'border-box',
-          alignSelf: 'start',
-          position: 'sticky',
-          top: '1rem',
-          maxHeight: 'calc(100vh - 2rem)',
-          overflowY: 'auto',
-          background: '#242424',
-        }}
-      >
+  className="panel"
+  style={{
+    width: '100%',
+    maxWidth: '18rem',
+    boxSizing: 'border-box',
+    alignSelf: 'start',
+    justifySelf: 'start',
+    position: 'sticky',
+    top: '1rem',
+    marginTop: '1rem',
+    maxHeight: 'calc(100vh - 2rem)',
+    overflowY: 'auto',
+    background: '#242424',
+  }}
+>
         <div
           style={{
             display: 'flex',
