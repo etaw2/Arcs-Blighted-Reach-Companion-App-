@@ -16,6 +16,8 @@ import {
 
 const allPlayerColors: PlayerColor[] = ['blue', 'red', 'yellow', 'white'];
 
+const APP_VERSION = 'v.1.0';
+
 const formatPlayerColor = (color: PlayerColor) =>
   color.charAt(0).toUpperCase() + color.slice(1);
 
@@ -154,6 +156,7 @@ export default function App() {
   const [saveNameSaving, setSaveNameSaving] = useState(false);
   const [saveStatusMessage, setSaveStatusMessage] = useState('');
   const [warningModal, setWarningModal] = useState<WarningModalState>(null);
+  const [cardPanelSessionKey, setCardPanelSessionKey] = useState(0);
 
   const titleMusicRef = useRef<HTMLAudioElement | null>(null);
   const saveNameInputRef = useRef<HTMLInputElement | null>(null);
@@ -412,6 +415,7 @@ export default function App() {
     playSound('panelClose');
     startTitleMusic();
     resetGame();
+    setCardPanelSessionKey((prev) => prev + 1);
     setHasOpenedHelpAfterSetup(false);
     setCurrentSaveName('Arcs Campaign Save');
     setSaveNameDraft('Arcs Campaign Save');
@@ -528,6 +532,7 @@ export default function App() {
       }
 
       importGameSaveFile(result.saveFile as Parameters<typeof importGameSaveFile>[0]);
+      setCardPanelSessionKey((prev) => prev + 1);
       setHasOpenedHelpAfterSetup(true);
       setCurrentSaveName(save.name || 'Arcs Campaign Save');
       setSaveNameDraft(save.name || 'Arcs Campaign Save');
@@ -586,6 +591,7 @@ export default function App() {
       confirmText: 'Reset Game',
       onConfirm: () => {
         resetGame();
+        setCardPanelSessionKey((prev) => prev + 1);
         setSoundSettingsOpen(false);
         setShowHelpPage(false);
       },
@@ -1179,6 +1185,17 @@ export default function App() {
               arcsbrcompanion@gmail.com
             </p>
 
+            <p
+              style={{
+                marginTop: '0.35rem',
+                marginBottom: 0,
+                fontSize: '0.75rem',
+                opacity: 0.7,
+              }}
+            >
+              {APP_VERSION}
+            </p>
+
             <div
   style={{
     display: 'flex',
@@ -1554,6 +1571,19 @@ export default function App() {
   >
     Companion
   </span>
+
+  <span
+    style={{
+      display: 'block',
+      marginTop: '0.45rem',
+      fontSize: '0.16em',
+      lineHeight: 1,
+      opacity: 0.7,
+      letterSpacing: '0.08em',
+    }}
+  >
+    {APP_VERSION}
+  </span>
 </h1>
 
             <div
@@ -1897,7 +1927,7 @@ export default function App() {
           <SelectedSpacePanel />
         </section>
 
-        <CardsPanel />
+        <CardsPanel key={cardPanelSessionKey} />
 
         <PlayerBoards />
       </div>

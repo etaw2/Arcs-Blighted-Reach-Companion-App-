@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useGameStore } from '../gameStore';
 import {
   allActionCards,
@@ -1439,57 +1440,59 @@ availableActionCards.length === 0? (
           </button>
         </div>
 
-        {clearLogWarningOpen && (
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 50000,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(0, 0, 0, 0.65)',
-              padding: '1rem',
+        {clearLogWarningOpen &&
+  createPortal(
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 999999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0, 0, 0, 0.65)',
+        padding: '1rem',
+      }}
+      onClick={() => setClearLogWarningOpen(false)}
+    >
+      <div
+        className="panel"
+        style={{
+          width: 'min(92vw, 24rem)',
+          background: '#000',
+          border: '1px solid rgba(255, 255, 255, 0.24)',
+          borderRadius: '0.85rem',
+          boxShadow: '0 18px 50px rgba(0, 0, 0, 0.9)',
+          color: 'white',
+          padding: '1rem',
+        }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h2 style={{ marginTop: 0 }}>Clear Log?</h2>
+        <p>Are you sure you want to clear the log?</p>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '0.5rem',
+            marginTop: '1rem',
+          }}
+        >
+          <button onClick={() => setClearLogWarningOpen(false)}>Cancel</button>
+          <button
+            onClick={() => {
+              playSound('panelClose');
+              setAvailableCardMoveLog([]);
+              setClearLogWarningOpen(false);
             }}
-            onClick={() => setClearLogWarningOpen(false)}
           >
-            <div
-              className="panel"
-              style={{
-                width: 'min(92vw, 24rem)',
-                background: '#000',
-                border: '1px solid rgba(255, 255, 255, 0.24)',
-                borderRadius: '0.85rem',
-                boxShadow: '0 18px 50px rgba(0, 0, 0, 0.65)',
-                color: 'white',
-                padding: '1rem',
-              }}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <h2 style={{ marginTop: 0 }}>Clear Log?</h2>
-              <p>Are you sure you want to clear the log?</p>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: '0.5rem',
-                  marginTop: '1rem',
-                }}
-              >
-                <button onClick={() => setClearLogWarningOpen(false)}>Cancel</button>
-                <button
-                  onClick={() => {
-                    playSound('panelClose');
-                    setAvailableCardMoveLog([]);
-                    setClearLogWarningOpen(false);
-                  }}
-                >
-                  Clear Log
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+            Clear Log
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )}
 
         {availableCardMoveLog.length === 0 ? (
           <p style={{ opacity: 0.75, margin: 0 }}>
