@@ -73,7 +73,7 @@ export default function SelectedSpacePanel() {
     return (
       <aside className="panel">
         <h2>Selected Space</h2>
-        <p>Click a gate or planet on the board to edit it.</p>
+        <p>Click a gate or planet on the board to edit it. Be sure to scroll down to view all available game elements</p>
       </aside>
     );
   }
@@ -88,8 +88,6 @@ export default function SelectedSpacePanel() {
           <h2>Gate {gate.number}</h2>
           <button className="ghost-button" onClick={() => { playSound('panelClose'); clearSelection(); }}>Close</button>
         </div>
-
-        <p>{selectedSpace.clusterId}</p>
 
         <div className="counter-row">
           <span>
@@ -290,10 +288,10 @@ const addFreeBuilding = (type: 'city' | 'starport') => {
   return (
     <aside className="panel">
       <div className="panel-header">
-        <h2>
-  Cluster {selectedSpace.clusterId.replace('cluster', '')} Planet{' '}
-  {planet.id.split('_')[1]}
-</h2>
+        <h3>
+  Cluster {selectedSpace.clusterId.replace('cluster', '')}{' - '}
+  {planet.resource.charAt(0).toUpperCase() + planet.resource.slice(1)} Planet
+</h3>
         <button className="ghost-button" onClick={() => { playSound('panelClose'); clearSelection(); }}>Close</button>
       </div>
 

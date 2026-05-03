@@ -61,6 +61,13 @@ type StoredSaveResult =
       reason?: string;
     };
 
+type WarningModalState = {
+  title: string;
+  message: string;
+  confirmText: string;
+  onConfirm: () => void;
+} | null;
+
 declare global {
   interface Window {
     electronAPI?: {
@@ -141,11 +148,12 @@ export default function App() {
   const [savePickerLoading, setSavePickerLoading] = useState(false);
   const [savePickerError, setSavePickerError] = useState('');
   const [saveNameModalOpen, setSaveNameModalOpen] = useState(false);
-  const [saveNameDraft, setSaveNameDraft] = useState('arcs-campaign-save');
-  const [currentSaveName, setCurrentSaveName] = useState('arcs-campaign-save');
+  const [saveNameDraft, setSaveNameDraft] = useState('Arcs Campaign Save');
+  const [currentSaveName, setCurrentSaveName] = useState('Arcs Campaign Save');
   const [saveNameError, setSaveNameError] = useState('');
   const [saveNameSaving, setSaveNameSaving] = useState(false);
   const [saveStatusMessage, setSaveStatusMessage] = useState('');
+  const [warningModal, setWarningModal] = useState<WarningModalState>(null);
 
   const titleMusicRef = useRef<HTMLAudioElement | null>(null);
   const saveNameInputRef = useRef<HTMLInputElement | null>(null);
@@ -229,6 +237,19 @@ export default function App() {
     return () => window.clearTimeout(timeoutId);
   }, [saveNameModalOpen]);
 
+  const resetMainAppScroll = () => {
+    window.requestAnimationFrame(() => {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: 'auto',
+      });
+
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
+  };
+
   const stopTitleMusic = () => {
     titleMusicRef.current?.pause();
     titleMusicRef.current = null;
@@ -237,18 +258,17 @@ export default function App() {
   const returnToMainMenu = () => {
     playSound('panelClose');
 
-    const confirmed = window.confirm(
-      'Are you sure you want to return to the main menu? Make sure you save your file first.'
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setShowTitleScreen(true);
-    setSoundSettingsOpen(false);
-    setShowHelpPage(false);
-    startTitleMusic();
+    setWarningModal({
+      title: 'Return to Main Menu?',
+      message: 'Make sure you save your campaign first. Returning to the main menu will not automatically save your current progress.',
+      confirmText: 'Return to Main Menu',
+      onConfirm: () => {
+        setShowTitleScreen(true);
+        setSoundSettingsOpen(false);
+        setShowHelpPage(false);
+        startTitleMusic();
+      },
+    });
   };
 
   const returnToSetupMenu = () => {
@@ -351,6 +371,32 @@ export default function App() {
     setSoundSettingsOpen((prev) => !prev);
   };
 
+  useEffect(() => {
+    if (!soundSettingsOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      if (target.closest('[data-sound-settings-root="true"]')) {
+        return;
+      }
+
+      setSoundSettingsOpen(false);
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown, true);
+
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown, true);
+    };
+  }, [soundSettingsOpen]);
+
   const openHelpPage = () => {
     playSound('panelClose');
     setSoundSettingsOpen(false);
@@ -367,8 +413,8 @@ export default function App() {
     startTitleMusic();
     resetGame();
     setHasOpenedHelpAfterSetup(false);
-    setCurrentSaveName('arcs-campaign-save');
-    setSaveNameDraft('arcs-campaign-save');
+    setCurrentSaveName('Arcs Campaign Save');
+    setSaveNameDraft('Arcs Campaign Save');
     setSaveStatusMessage('');
     setShowTitleScreen(false);
     setSoundSettingsOpen(false);
@@ -378,7 +424,7 @@ export default function App() {
   const handleSaveToFile = () => {
     playSound('panelClose');
     setSaveNameSaving(false);
-    setSaveNameDraft(currentSaveName || 'arcs-campaign-save');
+    setSaveNameDraft(currentSaveName || 'Arcs Campaign Save');
     setSaveNameError('');
     setSaveStatusMessage('');
     setSaveNameModalOpen(true);
@@ -483,14 +529,15 @@ export default function App() {
 
       importGameSaveFile(result.saveFile as Parameters<typeof importGameSaveFile>[0]);
       setHasOpenedHelpAfterSetup(true);
-      setCurrentSaveName(save.name || 'arcs-campaign-save');
-      setSaveNameDraft(save.name || 'arcs-campaign-save');
+      setCurrentSaveName(save.name || 'Arcs Campaign Save');
+      setSaveNameDraft(save.name || 'Arcs Campaign Save');
       setSaveStatusMessage('');
       stopTitleMusic();
       setShowTitleScreen(false);
       setSoundSettingsOpen(false);
       setShowHelpPage(false);
       setSavePickerMode(null);
+      resetMainAppScroll();
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Could not open save.');
     }
@@ -533,17 +580,16 @@ export default function App() {
   const handleResetGame = () => {
     playSound('panelClose');
 
-    const confirmed = window.confirm(
-      'Are you sure you want to reset the game? This will clear the current app state.'
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    resetGame();
-    setSoundSettingsOpen(false);
-    setShowHelpPage(false);
+    setWarningModal({
+      title: 'Reset Game?',
+      message: 'This will clear the current app state. Make sure you save your campaign first if you want to keep your progress.',
+      confirmText: 'Reset Game',
+      onConfirm: () => {
+        resetGame();
+        setSoundSettingsOpen(false);
+        setShowHelpPage(false);
+      },
+    });
   };
 
   const handleOpenSaveClick = () => {
@@ -716,6 +762,8 @@ export default function App() {
     setSetupComplete(true);
     setSoundSettingsOpen(false);
 
+    resetMainAppScroll();
+
     if (!hasOpenedHelpAfterSetup) {
       setShowHelpPage(true);
       setHasOpenedHelpAfterSetup(true);
@@ -724,8 +772,156 @@ export default function App() {
     }
   };
 
+  const closeWarningModal = () => {
+    playSound('panelClose');
+    setWarningModal(null);
+  };
+
+  const confirmWarningModal = () => {
+    if (!warningModal) {
+      return;
+    }
+
+    playSound('panelClose');
+    warningModal.onConfirm();
+    setWarningModal(null);
+  };
+
+  const renderSoundSettingsControl = (align: 'left' | 'right' = 'right') => (
+    <div
+      data-sound-settings-root="true"
+      style={{ position: 'relative' }}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button className="music-button" onClick={toggleSoundSettings}>
+        Sound Settings
+      </button>
+
+      {soundSettingsOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            right: align === 'right' ? 0 : 'auto',
+            left: align === 'left' ? 0 : 'auto',
+            top: 'calc(100% + 0.5rem)',
+            zIndex: 15000,
+            width: '16rem',
+            padding: '0.85rem',
+            borderRadius: '0.75rem',
+            border: '1px solid rgba(255, 255, 255, 0.24)',
+            background: 'rgba(5, 5, 5, 0.96)',
+            boxShadow: '0 12px 30px rgba(0, 0, 0, 0.55)',
+            color: 'white',
+            textAlign: 'left',
+          }}
+        >
+          <label
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.35rem',
+              marginBottom: '0.8rem',
+            }}
+          >
+            <span>Music Volume: {Math.round(musicVolume * 100)}%</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={musicVolume}
+              onChange={(event) => handleMusicVolumeChange(Number(event.target.value))}
+            />
+          </label>
+
+          <label
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.35rem',
+            }}
+          >
+            <span>SFX Volume: {Math.round(sfxVolume * 100)}%</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={sfxVolume}
+              onChange={(event) => handleSfxVolumeChange(Number(event.target.value))}
+            />
+          </label>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <>
+      {warningModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 50000,
+            background: 'rgba(0, 0, 0, 0.76)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '2rem',
+          }}
+          onClick={closeWarningModal}
+        >
+          <div
+            style={{
+              width: 'min(92vw, 30rem)',
+              background: '#101010',
+              border: '1px solid rgba(255, 255, 255, 0.24)',
+              borderRadius: '1rem',
+              boxShadow: '0 24px 70px rgba(0, 0, 0, 0.75)',
+              padding: '1.25rem',
+              color: 'white',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div
+  style={{
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '1rem',
+  }}
+>
+  <h2 style={{ margin: 0 }}>{warningModal.title}</h2>
+</div>
+
+            <p style={{ margin: 0, lineHeight: 1.5 }}>
+              {warningModal.message}
+            </p>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem',
+                flexWrap: 'wrap',
+              }}
+            >
+              <button className="music-button" onClick={closeWarningModal}>
+                Cancel
+              </button>
+
+              <button className="reset-button" onClick={confirmWarningModal}>
+                {warningModal.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {saveNameModalOpen && (
         <div
           style={{
@@ -756,19 +952,15 @@ export default function App() {
             onClick={(event) => event.stopPropagation()}
           >
             <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '1rem',
-              }}
-            >
-              <h2 style={{ margin: 0 }}>Save Campaign</h2>
-
-              <button className="music-button" onClick={closeSaveNameModal} disabled={saveNameSaving}>
-                Close
-              </button>
-            </div>
+  style={{
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '1rem',
+  }}
+>
+  <h2 style={{ margin: 0 }}>Save Campaign</h2>
+</div>
 
             <label
               style={{
@@ -865,7 +1057,7 @@ export default function App() {
               }}
             >
               <h2 style={{ margin: 0 }}>
-                {savePickerMode === 'open' ? 'Open Previous Save' : 'Delete Save'}
+                {savePickerMode === 'open' ? 'Open Existing Campaign' : 'Delete Campaign'}
               </h2>
 
               <button className="music-button" onClick={closeStoredSavePicker}>
@@ -973,7 +1165,7 @@ export default function App() {
             }}
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 style={{ marginTop: 0 }}>Help / Contact</h2>
+            <h2 style={{ marginTop: 0 }}>Support</h2>
 
             <p>For help with the Arcs Blighted Reach Companion, email:</p>
 
@@ -1064,7 +1256,7 @@ export default function App() {
                 color: 'white',
               }}
             >
-              <strong>Help</strong>
+              <strong>Help Page</strong>
 
               <button className="music-button" onClick={closeHelpPage}>
                 Close
@@ -1088,7 +1280,8 @@ export default function App() {
       margin: '0 auto',
     }}
   >
-    <h1>Using the Arcs Blighted Reach Companion App</h1>
+    
+    <h1 style={{ color: '#c09437' }}>Using the Arcs Blighted Reach Companion App</h1>
 
     <p>
       This app lets you save and rebuild your <strong>Blighted Reach Campaign</strong> game state between acts.
@@ -1096,7 +1289,7 @@ export default function App() {
       physical game away.
     </p>
 
-    <h2>The Basic Flow</h2>
+    <h2 style={{ color: '#c09437' }}>The Basic Flow</h2>
 
     <p>
       Start by completing all steps outlined in the Intermission Aid found in your Arcs game box. Then begin entering your campaign state into the app. Once you have entered all elements of your game state into the app, save your game state by clickng the save button and giving it a unique name.
@@ -1107,16 +1300,16 @@ export default function App() {
 
     <ol>
       <li>Complete Intermission Aid Steps.</li>
-      <li>Complete Game Setup Steps.</li>
+      <li>Complete Initial Campaign Settings Steps.</li>
       <li>Enter the Board State.</li>
       <li>Add Cards from the Available Cards Menu.</li>
-      <li>Check Placed Cards.</li>
+      <li>Check Assigned Cards.</li>
       <li>Fill Out Player Areas.</li>
       <li>Save the Campaign File.</li>
       <li>Prepare to Play Your Next Act.</li>
     </ol>
 
-    <h2>1. Complete Intermission Aid steps</h2>
+    <h2 style={{ color: '#c09437' }}>1. Complete Intermission Aid steps</h2>
 
     <p>
       At the end of a campaign game, complete all steps outlined in the Intermission Aid in your Arcs game box. This includes choosing new Fates
@@ -1128,20 +1321,20 @@ export default function App() {
       campaign state in the app, save the file, and then put the game away.
     </p>
 
-    <h2>2. Complete Game Setup Steps</h2>
+    <h2 style={{ color: '#c09437' }}>2. Complete Initial Campaign Settings Steps</h2>
 
     <p>
-      Start a New Save or open an existing one on the title screen. In the Setup Menu, choose the players who are in
+      Start a New Campaign or open an existing one on the title screen. In the Setup Menu, choose the players who are in
       the game, the players who have Flagships, the next act of your campaign (Act II or Act III), and the
       Special Tokens and/or Structures being used.
     </p>
 
     <p>
-      When you have completed the game set up steps outlined above, click <strong>Start App</strong>. If you need to change any game set up choices
+      When you have completed the initial campaign settings steps outlined above, click <strong>Next</strong>. If you need to change any game set up choices
       later, use <strong>Edit Setup</strong>.
     </p>
 
-    <h2>3. Enter the Board State</h2>
+    <h2 style={{ color: '#c09437' }}>3. Enter the Board State</h2>
 
     <p>
       Look at your physical Arcs game board. Starting with <strong>Cluster 1</strong>, use the app to 
@@ -1173,7 +1366,7 @@ export default function App() {
 
     <p>Continue until the board in the app matches the physical game board.</p>
 
-    <h2>4. Add Cards from the Available Cards Menu</h2>
+    <h2 style={{ color: '#c09437' }}>4. Add Cards from the Available Cards Menu</h2>
 
     <p>
       Next, go to the <strong>Available Cards</strong> menu. This Section contains all the cards that can be added.
@@ -1202,14 +1395,14 @@ export default function App() {
       should receive the Card. Faithful Action Cards can be added to either the Court or the Action Deck.
     </p>
 
-    <h2>5. Check Placed Cards</h2>
+    <h2 style={{ color: '#c09437' }}>5. Check Assigned Cards</h2>
 
     <p>
-      After adding Cards to the Court Deck, Rules Areas, Action Deck, and Scrap, go to <strong>Placed Cards</strong>. Use this Area to confirm that every card
+      After adding Cards to the Court Deck, Rules Areas, Action Deck, and Scrap, go to <strong>Assigned Cards</strong>. Use this Area to confirm that every card
       is in the correct place. Then check the Player Areas as well.
     </p>
 
-    <p>Placed Cards includes:</p>
+    <p>Assigned Cards includes:</p>
 
     <ul>
       <li>Court</li>
@@ -1225,7 +1418,7 @@ export default function App() {
       If a card was moved to the Scrap Pile by mistake, you can move it back to Available Cards.
     </p>
 
-    <h2>6. Fill Out Player Areas</h2>
+    <h2 style={{ color: '#c09437' }}>6. Fill Out Player Areas</h2>
 
     <p>
       Finally, go to the <strong>Player Areas</strong> section. For each player, enter everything from
@@ -1250,7 +1443,7 @@ export default function App() {
 
     <p>The goal is for each Player Area in the app to match that player’s physical area.</p>
 
-    <h2>7. Save the Campaign File</h2>
+    <h2 style={{ color: '#c09437' }}>7. Save the Campaign File</h2>
 
     <p>
       When the Board, Cards, and Player Areas are all entered correctly, click <strong>Save</strong>. Choose or
@@ -1272,7 +1465,7 @@ export default function App() {
 
     <p>After saving, you can safely put the physical game away.</p>
 
-    <h2>8. Prepare to Play Your Next Act</h2>
+    <h2 style={{ color: '#c09437' }}>8. Prepare to Play Your Next Act</h2>
 
     <p>
       At the start of your next session, open the app and load the saved campaign file. Rebuild your game state on the physical board as represented in the app.
@@ -1281,7 +1474,7 @@ export default function App() {
     <ul>
       <li>Rebuild the Board from the app map.</li>
       <li>Rebuild each Player Area from the Player Areas section.</li>
-      <li>Rebuild the Court from Placed Cards.</li>
+      <li>Rebuild the Court from Assigned Cards.</li>
       <li>Rebuild Laws, Edicts, and Summit Cards.</li>
       <li>Rebuild the Action Deck.</li>
       <li>Rebuild the Scrap Pile.</li>
@@ -1305,6 +1498,25 @@ export default function App() {
 
       {showTitleScreen && (
   <div className="title-screen" onClick={startTitleMusic}>
+    <div
+      style={{
+        position: 'fixed',
+        top: '1rem',
+        right: '1rem',
+        zIndex: 20000,
+        display: 'flex',
+        gap: '0.75rem',
+        alignItems: 'flex-start',
+      }}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button className="music-button" onClick={openHelpPage}>
+        Help
+      </button>
+
+      {renderSoundSettingsControl('right')}
+    </div>
+
     <div className="title-screen-content">
       <h1
   style={{
@@ -1372,7 +1584,7 @@ export default function App() {
                 <h2>By Ethan Klein</h2>
 
                 <p>
-                  Use this app to track your Blighted Reach Campaign board state, player areas, and cards. With this app you can now play base Arcs while you have a campaign in progress or track multiple campaigns at once.
+                  Use this app to track your Blighted Reach Campaign board state, cards, and player areas. With this app you can now play base Arcs while you have a campaign in progress or track multiple campaigns at once.
                 </p>
 
                 <div
@@ -1390,7 +1602,7 @@ export default function App() {
                       handleNewSave();
                     }}
                   >
-                    New Save
+                    New Campaign
                   </button>
 
                   <button
@@ -1400,7 +1612,7 @@ export default function App() {
                       handleOpenSaveClick();
                     }}
                   >
-                    Open Previous Save
+                    Open Existing Campaign
                   </button>
 
                   <button
@@ -1410,7 +1622,7 @@ export default function App() {
                       handleDeleteSave();
                     }}
                   >
-                    Delete Save
+                    Delete Campaign
                   </button>
                   <button
                     className="start-title-button"
@@ -1443,8 +1655,27 @@ export default function App() {
 
       {!showTitleScreen && !gameSetup.setupComplete && (
         <div className="setup-modal" onClick={startTitleMusic}>
-          <div className="setup-content">
-            <h2>Game Setup</h2>
+          <div className="setup-content" style={{ position: 'relative' }}>
+            <div
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                zIndex: 20000,
+                display: 'flex',
+                gap: '0.75rem',
+                alignItems: 'flex-start',
+              }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button className="music-button" onClick={openHelpPage}>
+                Help
+              </button>
+
+              {renderSoundSettingsControl('right')}
+            </div>
+
+            <h2 style={{ color: '#c09437' }}> Initial Campaign Settings</h2>
 
             <p
               style={{
@@ -1459,8 +1690,8 @@ export default function App() {
             </p>
 
             <div className="setup-section">
-              <strong>Campaign Act</strong>
-              <p>Choose the act you are setting up for:</p>
+              <strong style={{ color: '#c09437' }}>Campaign Act</strong>
+              <p>Select your next act:</p>
               <div className="chip-row">
                 <button
                   className={(localSetup.campaignAct ?? 'actII') === 'actII' ? 'selected-chip' : ''}
@@ -1479,8 +1710,8 @@ export default function App() {
             </div>
 
             <div className="setup-section">
-  <strong>Players in Game</strong>
-  <p>Choose at least 2 players:</p>
+  <strong style={{ color: '#c09437' }}>Players in Game</strong>
+  <p>Remove inactive players:</p>
   <div className="chip-row">
     {allPlayerColors.map((color) => (
       <button
@@ -1495,7 +1726,7 @@ export default function App() {
 </div>
 
             <div className="setup-section">
-              <strong>Players with Flagships</strong>
+              <strong style={{ color: '#c09437' }}>Players with Flagships</strong>
               <div className="chip-row">
                 {localSetup.playersInGame.map((color) => (
                   <SetupIconButton
@@ -1511,7 +1742,7 @@ export default function App() {
             </div>
 
             <div className="setup-section">
-              <strong>Special Tokens</strong>
+              <strong style={{ color: '#c09437' }}>Special Tokens</strong>
               <div className="chip-row">
                 <SetupIconButton
                   label="Pathfinder's Portal"
@@ -1556,7 +1787,7 @@ export default function App() {
             </div>
 
             <div className="setup-section">
-              <strong>Special Structures</strong>
+              <strong style={{ color: '#c09437' }}>Special Structures</strong>
               <div className="chip-row">
                 <button
                   className={localSetup.optionalStructures.cloudCities ? 'selected-chip' : ''}
@@ -1600,7 +1831,7 @@ export default function App() {
                 onClick={handleConfirmSetup}
                 disabled={localSetup.playersInGame.length < 2}
               >
-                Start App
+                Next
               </button>
             </div>
           </div>
@@ -1653,66 +1884,7 @@ export default function App() {
 
             {gameSetup.setupComplete && !showTitleScreen && <BackgroundMusic />}
 
-            <div style={{ position: 'relative' }}>
-              <button className="music-button" onClick={toggleSoundSettings}>
-                Sound Settings
-              </button>
-
-              {soundSettingsOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: 0,
-                    top: 'calc(100% + 0.5rem)',
-                    zIndex: 15000,
-                    width: '16rem',
-                    padding: '0.85rem',
-                    borderRadius: '0.75rem',
-                    border: '1px solid rgba(255, 255, 255, 0.24)',
-                    background: 'rgba(5, 5, 5, 0.96)',
-                    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.55)',
-                    color: 'white',
-                  }}
-                >
-                  <label
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.35rem',
-                      marginBottom: '0.8rem',
-                    }}
-                  >
-                    <span>Music Volume: {Math.round(musicVolume * 100)}%</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      value={musicVolume}
-                      onChange={(event) => handleMusicVolumeChange(Number(event.target.value))}
-                    />
-                  </label>
-
-                  <label
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.35rem',
-                    }}
-                  >
-                    <span>SFX Volume: {Math.round(sfxVolume * 100)}%</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      value={sfxVolume}
-                      onChange={(event) => handleSfxVolumeChange(Number(event.target.value))}
-                    />
-                  </label>
-                </div>
-              )}
-            </div>
+            {gameSetup.setupComplete && !showTitleScreen && renderSoundSettingsControl('right')}
 
             <button className="reset-button" onClick={handleResetGame}>
               Reset game

@@ -90,6 +90,7 @@ export const cardImages: Record<string, string> = {
 'F4-19': '/assets/cards/court/F4-19.jpg',
 'F4-20': '/assets/cards/court/F4-20.jpg',
 'F4-21': '/assets/cards/court/F4-21.jpg',
+'F4-22': '/assets/cards/court/F4-22.jpg',
 
 'F5-02': '/assets/cards/court/F5-02.jpg',
 'F5-03': '/assets/cards/court/F5-03.jpg',

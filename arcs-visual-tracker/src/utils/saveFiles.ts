@@ -5,15 +5,15 @@ export type DeleteSaveFileResult =
   | { ok: false; reason: string };
 
 export function createSaveFileName(saveName: string) {
-  const cleanedName = saveName
-    .trim()
+  const trimmedName = saveName.trim();
+  const nameToUse = trimmedName || 'Arcs Campaign Save';
+
+  const cleanedName = nameToUse
     .replace(/[^a-z0-9-_ ]/gi, '')
-    .replace(/\s+/g, '-')
-    .toLowerCase();
+    .replace(/\s+/g, ' ')
+    .trim();
 
-  const safeName = cleanedName || 'arcs-campaign-save';
-
-  return `${safeName}.json`;
+  return `${cleanedName || 'Arcs Campaign Save'}.json`;
 }
 
 export async function downloadSaveFile(saveFile: GameSaveFile, fileName: string) {
@@ -42,7 +42,7 @@ export async function readSaveFileFromInput(file: File): Promise<GameSaveFile> {
   }
 
   const fallbackDate = parsed.savedAt ?? parsed.updatedAt ?? new Date().toISOString();
-  const fallbackName = file.name.replace(/\.json$/i, '') || 'arcs-campaign-save';
+  const fallbackName = file.name.replace(/\.json$/i, '') || 'Arcs Campaign Save';
 
   return {
     version: 1,

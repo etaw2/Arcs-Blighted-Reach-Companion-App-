@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../gameStore';
 import {
   allActionCards,
@@ -24,6 +24,26 @@ const EMPTY_RULE_CARDS: RuleCard[] = [];
 const EMPTY_PLAYER_CARDS: PlayerCard[] = [];
 const EMPTY_ACTION_CARDS: ActionCard[] = [];
 const EMPTY_SCRAP_CARDS: GameCard[] = [];
+
+type AvailableCardMoveLogEntry = {
+  id: string;
+  card: GameCard;
+  cardLabel: string;
+  destination: string;
+  destinationType: 'court' | 'player' | 'laws' | 'edicts' | 'summit' | 'actionDeck' | 'scrapPile' | 'available';
+  playerColor?: PlayerColor;
+  sourceType?: 'court' | 'player' | 'laws' | 'edicts' | 'summit' | 'actionDeck' | 'scrapPile' | 'available';
+  sourcePlayerColor?: PlayerColor;
+};
+
+type CardMovedLogEventDetail = {
+  card: GameCard;
+  destination: string;
+  destinationType: AvailableCardMoveLogEntry['destinationType'];
+  playerColor?: PlayerColor;
+  sourceType?: AvailableCardMoveLogEntry['sourceType'];
+  sourcePlayerColor?: PlayerColor;
+};
 
 const COURT_GROUP_LABELS: Record<string, string> = {
   cc: 'Base Court',
@@ -67,6 +87,28 @@ const COURT_GROUP_ORDER = [
   'F16',
 ];
 
+const PLAYER_BUTTON_TEXT_COLORS: Record<PlayerColor, string> = {
+  blue: '#1697aa',
+  red: '#e0513c',
+  yellow: '#fdb414',
+  white: '#ffffff',
+};
+
+const COURT_BUTTON_STYLE = {
+  color: '#d2ae50',
+  fontWeight: 700,
+};
+
+const RULE_BUTTON_STYLE = {
+  color: '#8c479a',
+  fontWeight: 700,
+};
+
+const SCRAP_BUTTON_STYLE = {
+  color: '#903326',
+  fontWeight: 700,
+};
+
 function sortById<T extends { id: string }>(cards: T[]): T[] {
   const parseId = (id: string) => {
     const [left, right] = id.split('-');
@@ -98,6 +140,9 @@ function getCourtGroupKey(card: GameCard) {
 function isFaithfulActionCard(card: ActionCard) {
   return /^F\d+-/.test(card.id) && !card.id.startsWith('F5-');
 }
+function isVoxCard(card: CourtCard | PlayerCard) {
+  return card.category === 'court' && card.type === 'vox';
+}
 
 function groupCardsByCourtKey<T extends GameCard>(cards: T[]) {
   return cards.reduce<Record<string, T[]>>((groups, card) => {
@@ -114,6 +159,50 @@ function groupCardsByCourtKey<T extends GameCard>(cards: T[]) {
 
 function capitalizePlayerColor(color: PlayerColor) {
   return color.charAt(0).toUpperCase() + color.slice(1);
+}
+
+function getMoveDestinationTextStyle(entry: AvailableCardMoveLogEntry) {
+  if (entry.destinationType === 'player' && entry.playerColor) {
+    return {
+      color: PLAYER_BUTTON_TEXT_COLORS[entry.playerColor],
+      opacity: 1,
+      fontWeight: 700,
+    };
+  }
+
+  if (entry.destinationType === 'court') {
+  return {
+    color: '#d2ae50',
+    opacity: 1,
+    fontWeight: 700,
+  };
+}
+
+if (entry.destinationType === 'scrapPile') {
+  return {
+    color: '#903326',
+    opacity: 1,
+    fontWeight: 700,
+  };
+}
+
+if (
+  entry.destinationType === 'laws' ||
+  entry.destinationType === 'edicts' ||
+  entry.destinationType === 'summit'
+) {
+  return {
+    color: '#8c479a',
+    opacity: 1,
+    fontWeight: 700,
+  };
+}
+
+  return {
+    color: 'rgba(255, 255, 255, 0.95)',
+    opacity: 1,
+    fontWeight: 700,
+  };
 }
 
 function getCardSearchText(card: GameCard) {
@@ -134,6 +223,15 @@ function getCardSearchText(card: GameCard) {
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
+}
+
+function getCardDisplayName(card: GameCard) {
+  const displayCard = card as GameCard & {
+    name?: string;
+    title?: string;
+  };
+
+  return displayCard.name ?? displayCard.title ?? card.id;
 }
 
 function SectionToggle({
@@ -229,17 +327,21 @@ function AddToPlayerMenu({
       </button>
 
       {isOpen &&
-        activePlayerColors.map((color) => (
-          <button
-            key={color}
-            onClick={() => {
-              onAdd(color, card);
-              setIsOpen(false);
-            }}
-          >
-            Add to {capitalizePlayerColor(color)}
-          </button>
-        ))}
+  activePlayerColors.map((color) => (
+    <button
+      key={color}
+      style={{
+        color: PLAYER_BUTTON_TEXT_COLORS[color],
+        fontWeight: 700,
+      }}
+      onClick={() => {
+        onAdd(color, card);
+        setIsOpen(false);
+      }}
+    >
+      Add to {capitalizePlayerColor(color)}
+    </button>
+  ))}
     </div>
   );
 }
@@ -260,6 +362,7 @@ export default function CardsPanel() {
   const scrapActionCard = useGameStore((state) => state.scrapActionCard);
   const removeCardFromScrapPile = useGameStore((state) => state.removeCardFromScrapPile);
   const addPlayerCardToPlayer = useGameStore((state) => state.addPlayerCardToPlayer);
+  const removePlayerCardFromPlayer = useGameStore((state) => state.removePlayerCardFromPlayer);
 
   const [showAvailableCourt, setShowAvailableCourt] = useState(false);
 
@@ -271,6 +374,8 @@ export default function CardsPanel() {
   const [showScrapPile, setShowScrapPile] = useState(false);
 
   const [availableCourtSearch, setAvailableCourtSearch] = useState('');
+  const [availableCardMoveLog, setAvailableCardMoveLog] = useState<AvailableCardMoveLogEntry[]>([]);
+  const [clearLogWarningOpen, setClearLogWarningOpen] = useState(false);
 
   const courtDeck = gameState.court?.inDeck ?? EMPTY_COURT_CARDS;
   const laws = gameState.rules?.laws ?? EMPTY_RULE_CARDS;
@@ -409,18 +514,137 @@ export default function CardsPanel() {
     [actionDeckIds, scrappedIds]
   );
 
-  const renderAddToPlayerButtons = (card: CourtCard | PlayerCard) => (
+  const logAvailableCardMove = (
+  card: GameCard,
+  destination: string,
+  destinationType: AvailableCardMoveLogEntry['destinationType'],
+  playerColor?: PlayerColor,
+  sourceType?: AvailableCardMoveLogEntry['sourceType'],
+  sourcePlayerColor?: PlayerColor
+) => {
+  setAvailableCardMoveLog((prev) => [
+    {
+      id: `${card.id}-${destination}-${Date.now()}-${prev.length}`,
+      card,
+      cardLabel: `${card.id} · ${getCardDisplayName(card)}`,
+      destination,
+      destinationType,
+      playerColor,
+      sourceType,
+      sourcePlayerColor,
+    },
+    ...prev,
+  ]);
+};
+
+const undoAvailableCardMove = (entry: AvailableCardMoveLogEntry) => {
+  playSound('cardMove');
+
+  if (entry.destinationType === 'court') {
+    removeCourtCardFromDeck(entry.card.id);
+  }
+
+  if (entry.destinationType === 'player' && entry.playerColor) {
+    removePlayerCardFromPlayer(entry.playerColor, entry.card.id);
+  }
+
+  if (entry.destinationType === 'laws') {
+    removeRuleCard('laws', entry.card.id);
+  }
+
+  if (entry.destinationType === 'edicts') {
+    removeRuleCard('edicts', entry.card.id);
+  }
+
+  if (entry.destinationType === 'summit') {
+    removeRuleCard('summit', entry.card.id);
+  }
+
+  if (entry.destinationType === 'actionDeck') {
+    removeActionCardFromDeck(entry.card.id);
+  }
+
+  if (entry.destinationType === 'scrapPile') {
+    removeCardFromScrapPile(entry.card.id);
+  }
+
+  if (entry.sourceType === 'court') {
+    addCourtCardToDeck(entry.card as CourtCard);
+  }
+
+  if (entry.sourceType === 'player' && entry.sourcePlayerColor) {
+    addPlayerCardToPlayer(entry.sourcePlayerColor, entry.card as CourtCard | PlayerCard);
+  }
+
+  if (entry.sourceType === 'laws') {
+    addRuleCard('laws', entry.card as RuleCard);
+  }
+
+  if (entry.sourceType === 'edicts') {
+    addRuleCard('edicts', entry.card as RuleCard);
+  }
+
+  if (entry.sourceType === 'summit') {
+    addRuleCard('summit', entry.card as RuleCard);
+  }
+
+  if (entry.sourceType === 'actionDeck') {
+    addActionCardToDeck(entry.card as ActionCard);
+  }
+
+  setAvailableCardMoveLog((prev) => prev.filter((item) => item.id !== entry.id));
+};
+
+useEffect(() => {
+  const handleCardMovedLog = (event: Event) => {
+    const customEvent = event as CustomEvent<CardMovedLogEventDetail>;
+    const detail = customEvent.detail;
+
+    if (!detail?.card) {
+      return;
+    }
+
+    logAvailableCardMove(
+      detail.card,
+      detail.destination,
+      detail.destinationType,
+      detail.playerColor,
+      detail.sourceType,
+      detail.sourcePlayerColor
+    );
+  };
+
+  window.addEventListener('arcs-card-moved-log', handleCardMovedLog);
+
+  return () => {
+    window.removeEventListener('arcs-card-moved-log', handleCardMovedLog);
+  };
+}, []);
+
+ const renderAddToPlayerButtons = (card: CourtCard | PlayerCard) => {
+  if (isVoxCard(card)) {
+    return null;
+  }
+
+  return (
     <AddToPlayerMenu
       card={card}
       activePlayerColors={activePlayerColors}
       onAdd={(color, selectedCard) => {
         playSound('cardMove');
         addPlayerCardToPlayer(color, selectedCard);
+        logAvailableCardMove(selectedCard, `${capitalizePlayerColor(color)} Player Area`, 'player', color, 'available');
       }}
     />
   );
+};
 
-  const renderMoveCourtCardToPlayerButtons = (card: CourtCard) => (
+ const renderMoveCourtCardToPlayerButtons = (card: CourtCard) => {
+  if (isVoxCard(card)) {
+    return null;
+  }
+
+  return (
     <AddToPlayerMenu
       card={card}
       activePlayerColors={activePlayerColors}
@@ -428,44 +652,51 @@ export default function CardsPanel() {
         playSound('cardMove');
         addPlayerCardToPlayer(color, selectedCard);
         removeCourtCardFromDeck(selectedCard.id);
+        logAvailableCardMove(selectedCard, `${capitalizePlayerColor(color)} Player Area`, 'player', color, 'court');
       }}
     />
   );
+};
 
   return (
     <section
       className="main-layout"
       style={{
         marginTop: '1rem',
-        display: 'flex',
-        flexDirection: 'column',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) 18rem',
         gap: '1rem',
         width: '100%',
         maxWidth: 'none',
-        alignItems: 'stretch',
+        alignItems: 'start',
       }}
     >
       <style>
   {`
     .card-picture-only {
-      position: relative;
-      z-index: 1;
-      min-height: 10rem;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      transition: transform 160ms ease, z-index 160ms ease, filter 160ms ease;
-      transform-origin: center center;
-      color: transparent !important;
-      font-size: 0 !important;
-      line-height: 0 !important;
-    }
+  position: relative;
+  z-index: 1;
+  min-height: 10rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  transition:
+    transform 160ms ease,
+    filter 160ms ease,
+    z-index 0ms linear;
+  transition-delay: 0s;
+  transform-origin: center center;
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
 
-    .card-picture-only:hover {
-      transform: scale(2.15);
-      z-index: 9999;
-      filter: drop-shadow(0 0 14px rgba(0, 0, 0, 0.85));
-    }
+.card-picture-only:hover {
+  transform: scale(2.15);
+  z-index: 9999;
+  filter: drop-shadow(0 0 14px rgba(0, 0, 0, 0.85));
+  transition-delay: .5s;
+}
 
     .card-picture-only * {
       color: transparent !important;
@@ -490,10 +721,11 @@ export default function CardsPanel() {
     }
 
     .subsection {
-      width: 100%;
-      box-sizing: border-box;
-      position: relative;
-    }
+  width: 100%;
+  box-sizing: border-box;
+  position: relative;
+  margin-bottom: 1rem;
+}
 
     .card-tile-actions button {
       width: 100%;
@@ -506,6 +738,14 @@ export default function CardsPanel() {
   `}
 </style>
 
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem',
+          minWidth: 0,
+        }}
+      >
       <aside
         className="panel"
         style={{
@@ -516,30 +756,70 @@ export default function CardsPanel() {
           position: 'relative',
         }}
       >
-        <h2>Available Cards</h2>
+        <div
+          id="available-cards-sticky-header"
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 30,
+            background: 'rgba(24, 24, 24, 0.98)',
+            backdropFilter: 'blur(6px)',
+            paddingTop: '0.9rem',
+            paddingBottom: '0.9rem',
+            marginBottom: '0.75rem',
+          }}
+        >
+          <h2 style={{ marginBottom: '0.5rem' }}>Available Cards</h2>
 
-        <SectionToggle
-          title="Available Cards"
-          isOpen={showAvailableCourt}
-          onToggle={() => setShowAvailableCourt((prev) => !prev)}
-        />
-                {showAvailableCourt && (
+          <SectionToggle
+            title="Available Cards"
+            isOpen={showAvailableCourt}
+            onToggle={() => {
+              if (showAvailableCourt) {
+                window.requestAnimationFrame(() => {
+                  document
+                    .getElementById('available-cards-sticky-header')
+                    ?.scrollIntoView({ behavior: 'auto', block: 'start' });
+                });
+              }
+
+              setShowAvailableCourt((prev) => !prev);
+            }}
+          />
+
+          {showAvailableCourt && (
+            <div style={{ marginTop: '0.9rem' }}>
+              <input
+                value={availableCourtSearch}
+                onChange={(event) => {
+                  setAvailableCourtSearch(event.target.value);
+
+                  window.requestAnimationFrame(() => {
+                    document
+                      .getElementById('available-cards-sticky-header')
+                      ?.scrollIntoView({ behavior: 'auto', block: 'start' });
+                  });
+                }}
+                placeholder="Search available cards..."
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  marginBottom: 0,
+                  padding: '0.55rem 0.7rem',
+                  borderRadius: '0.4rem',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.35)',
+                  color: 'white',
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+
+
+        {showAvailableCourt && (
           <div className="subsection">
-            <input
-              value={availableCourtSearch}
-              onChange={(event) => setAvailableCourtSearch(event.target.value)}
-              placeholder="Search available cards..."
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                marginBottom: '1rem',
-                padding: '0.55rem 0.7rem',
-                borderRadius: '0.4rem',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                background: 'rgba(0, 0, 0, 0.35)',
-                color: 'white',
-              }}
-            />
 
             {availableCourtCards.length === 0 &&
 availablePlayerCards.length === 0 &&
@@ -590,9 +870,11 @@ availableActionCards.length === 0? (
                           actions={
                             <>
                               <button
+                                style={COURT_BUTTON_STYLE}
                                 onClick={() => {
                                   playSound('cardMove');
                                   addCourtCardToDeck(card);
+                                  logAvailableCardMove(card, 'Court', 'court', undefined, 'available');
                                 }}
                               >
                                 Add to Court
@@ -637,9 +919,11 @@ availableActionCards.length === 0? (
                           <CardTile
                             key={card.id}
                             actions={<button
+                              style={RULE_BUTTON_STYLE}
                               onClick={() => {
                                 playSound('cardMove');
                                 addRuleCard('laws', card);
+                                logAvailableCardMove(card, 'Laws', 'laws', undefined, 'available');
                               }}
                             >
                               Add to Laws
@@ -676,9 +960,11 @@ availableActionCards.length === 0? (
                           <CardTile
                             key={card.id}
                             actions={<button
+                              style={RULE_BUTTON_STYLE}
                               onClick={() => {
                                 playSound('cardMove');
                                 addRuleCard('edicts', card);
+                                logAvailableCardMove(card, 'Edicts', 'edicts', undefined, 'available');
                               }}
                             >
                               Add to Edicts
@@ -715,9 +1001,11 @@ availableActionCards.length === 0? (
                           <CardTile
                             key={card.id}
                             actions={<button
+                              style={RULE_BUTTON_STYLE}
                               onClick={() => {
                                 playSound('cardMove');
                                 addRuleCard('summit', card);
+                                logAvailableCardMove(card, 'Summit', 'summit', undefined, 'available');
                               }}
                             >
                               Add to Summit
@@ -756,9 +1044,11 @@ availableActionCards.length === 0? (
                             actions={
                               <>
                                 <button
+                                  style={COURT_BUTTON_STYLE}
                                   onClick={() => {
                                     playSound('cardMove');
                                     addCourtCardToDeck(card as unknown as CourtCard);
+                                    logAvailableCardMove(card, 'Court', 'court', undefined, 'available');
                                   }}
                                 >
                                   Add to Court
@@ -767,6 +1057,7 @@ availableActionCards.length === 0? (
                                   onClick={() => {
                                     playSound('cardMove');
                                     addActionCardToDeck(card);
+                                    logAvailableCardMove(card, 'Action Deck', 'actionDeck', undefined, 'available');
                                   }}
                                 >
                                   Add to Action Deck
@@ -809,6 +1100,7 @@ availableActionCards.length === 0? (
                                 onClick={() => {
                                   playSound('cardMove');
                                   addActionCardToDeck(card);
+                                  logAvailableCardMove(card, 'Action Deck', 'actionDeck', undefined, 'available');
                                 }}
                               >
                                 Add to Action Deck
@@ -837,7 +1129,7 @@ availableActionCards.length === 0? (
           position: 'relative',
         }}
       >
-        <h2>Placed Cards</h2>
+        <h2>Assigned Cards</h2>
 
         <SectionToggle
           title="Court"
@@ -856,9 +1148,11 @@ availableActionCards.length === 0? (
                     actions={
                       <>
                         <button
+                          style={SCRAP_BUTTON_STYLE}
                           onClick={() => {
                             playSound('cardMove');
                             scrapCourtCard(card.id);
+                            logAvailableCardMove(card, 'Scrap Pile', 'scrapPile', undefined, 'court');
                           }}
                         >
                           Scrap
@@ -867,6 +1161,7 @@ availableActionCards.length === 0? (
                           onClick={() => {
                             playSound('cardMove');
                             removeCourtCardFromDeck(card.id);
+                            logAvailableCardMove(card, 'Available Cards', 'available', undefined, 'court');
                           }}
                         >
                           Remove
@@ -900,9 +1195,11 @@ availableActionCards.length === 0? (
                     actions={
                       <>
                         <button
+                          style={SCRAP_BUTTON_STYLE}
                           onClick={() => {
                             playSound('cardMove');
                             scrapRuleCard('laws', card.id);
+                            logAvailableCardMove(card, 'Scrap Pile', 'scrapPile', undefined, 'laws');
                           }}
                         >
                           Scrap
@@ -911,6 +1208,7 @@ availableActionCards.length === 0? (
                           onClick={() => {
                             playSound('cardMove');
                             removeRuleCard('laws', card.id);
+                            logAvailableCardMove(card, 'Available Cards', 'available', undefined, 'laws');
                           }}
                         >
                           Remove
@@ -943,9 +1241,11 @@ availableActionCards.length === 0? (
                     actions={
                       <>
                         <button
+                          style={SCRAP_BUTTON_STYLE}
                           onClick={() => {
                             playSound('cardMove');
                             scrapRuleCard('edicts', card.id);
+                            logAvailableCardMove(card, 'Scrap Pile', 'scrapPile', undefined, 'edicts');
                           }}
                         >
                           Scrap
@@ -954,6 +1254,7 @@ availableActionCards.length === 0? (
                           onClick={() => {
                             playSound('cardMove');
                             removeRuleCard('edicts', card.id);
+                            logAvailableCardMove(card, 'Available Cards', 'available', undefined, 'edicts');
                           }}
                         >
                           Remove
@@ -986,9 +1287,11 @@ availableActionCards.length === 0? (
                     actions={
                       <>
                         <button
+                          style={SCRAP_BUTTON_STYLE}
                           onClick={() => {
                             playSound('cardMove');
                             scrapRuleCard('summit', card.id);
+                            logAvailableCardMove(card, 'Scrap Pile', 'scrapPile', undefined, 'summit');
                           }}
                         >
                           Scrap
@@ -997,6 +1300,7 @@ availableActionCards.length === 0? (
                           onClick={() => {
                             playSound('cardMove');
                             removeRuleCard('summit', card.id);
+                            logAvailableCardMove(card, 'Available Cards', 'available', undefined, 'summit');
                           }}
                         >
                           Remove
@@ -1029,9 +1333,11 @@ availableActionCards.length === 0? (
                     actions={
                       <>
                         <button
+                          style={SCRAP_BUTTON_STYLE}
                           onClick={() => {
                             playSound('cardMove');
                             scrapActionCard(card.id);
+                            logAvailableCardMove(card, 'Scrap Pile', 'scrapPile', undefined, 'actionDeck');
                           }}
                         >
                           Scrap
@@ -1040,6 +1346,7 @@ availableActionCards.length === 0? (
                           onClick={() => {
                             playSound('cardMove');
                             removeActionCardFromDeck(card.id);
+                            logAvailableCardMove(card, 'Available Cards', 'available', undefined, 'actionDeck');
                           }}
                         >
                           Remove
@@ -1088,6 +1395,158 @@ availableActionCards.length === 0? (
           </div>
         )}
 
+      </aside>
+      </div>
+
+      <aside
+        className="panel"
+        style={{
+          width: '100%',
+          maxWidth: '18rem',
+          boxSizing: 'border-box',
+          alignSelf: 'start',
+          position: 'sticky',
+          top: '1rem',
+          maxHeight: 'calc(100vh - 2rem)',
+          overflowY: 'auto',
+          background: '#242424',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+            marginBottom: '0.65rem',
+          }}
+        >
+          <h2 style={{ margin: 0 }}>Card Movement Log</h2>
+          <button
+            onClick={() => setClearLogWarningOpen(true)}
+            disabled={availableCardMoveLog.length === 0}
+            style={{
+              flexShrink: 0,
+              width: 'fit-content',
+              padding: '0.2rem 0.45rem',
+              fontSize: '0.75rem',
+              lineHeight: 1,
+            }}
+          >
+            Clear Log
+          </button>
+        </div>
+
+        {clearLogWarningOpen && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 50000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(0, 0, 0, 0.65)',
+              padding: '1rem',
+            }}
+            onClick={() => setClearLogWarningOpen(false)}
+          >
+            <div
+              className="panel"
+              style={{
+                width: 'min(92vw, 24rem)',
+                background: '#000',
+                border: '1px solid rgba(255, 255, 255, 0.24)',
+                borderRadius: '0.85rem',
+                boxShadow: '0 18px 50px rgba(0, 0, 0, 0.65)',
+                color: 'white',
+                padding: '1rem',
+              }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h2 style={{ marginTop: 0 }}>Clear Log?</h2>
+              <p>Are you sure you want to clear the log?</p>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '0.5rem',
+                  marginTop: '1rem',
+                }}
+              >
+                <button onClick={() => setClearLogWarningOpen(false)}>Cancel</button>
+                <button
+                  onClick={() => {
+                    playSound('panelClose');
+                    setAvailableCardMoveLog([]);
+                    setClearLogWarningOpen(false);
+                  }}
+                >
+                  Clear Log
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {availableCardMoveLog.length === 0 ? (
+          <p style={{ opacity: 0.75, margin: 0 }}>
+            No cards moved yet.
+          </p>
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.45rem',
+            }}
+          >
+            {availableCardMoveLog.map((entry) => (
+              <div
+                key={entry.id}
+                style={{
+                  borderTop: '1px solid rgba(255, 255, 255, 0.14)',
+                  paddingTop: '0.45rem',
+                  lineHeight: 1.35,
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.75rem',
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700 }}>{entry.cardLabel}</div>
+                    <div>
+                      <span style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+                        Moved to{' '}
+                      </span>
+                      <span style={getMoveDestinationTextStyle(entry)}>
+                        {entry.destination}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => undoAvailableCardMove(entry)}
+                    style={{
+                      flexShrink: 0,
+                      width: 'fit-content',
+                      padding: '0.2rem 0.45rem',
+                      fontSize: '0.75rem',
+                      lineHeight: 1,
+                    }}
+                  >
+                    Undo
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </aside>
 
     </section>

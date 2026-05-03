@@ -58,6 +58,12 @@ const normalizeGameSetup = (gameSetup?: Partial<GameSetup>): GameSetup => ({
   },
 });
 
+const getClusterSeatNumber = (clusterId: ClusterId) => {
+  const seatNumber = Number(String(clusterId).replace('cluster', ''));
+
+  return Number.isNaN(seatNumber) ? null : seatNumber;
+};
+
 const clearSeatsFromMap = (map: GameState['map']): GameState['map'] =>
   Object.fromEntries(
     Object.entries(map).map(([clusterId, cluster]) => [

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, type MouseEvent } from 'react';
 import { useGameStore } from '../gameStore';
 import { playSound } from '../utils/sound';
 import type { Building, ClusterId, PlanetKey, PlayerColor } from '../gameState';
@@ -94,8 +94,8 @@ type ShipAnchor = {
 const BUILDING_TOKEN_WIDTH = 85;
 const BUILDING_TOKEN_HEIGHT = 85;
 
-const SHIP_TOKEN_WIDTH = 56;
-const SHIP_TOKEN_HEIGHT = 56;
+const SHIP_TOKEN_WIDTH = 100;
+const SHIP_TOKEN_HEIGHT = 100;
 const FLAGSHIP_TOKEN_WIDTH = 74;
 const FLAGSHIP_TOKEN_HEIGHT = 74;
 const BLIGHT_TOKEN_WIDTH = 58;
@@ -112,6 +112,10 @@ const SEAT_TOKEN_WIDTH = 60;
 const SEAT_TOKEN_HEIGHT = 60;
 const SEAT_TOKEN_OFFSET_X = 0;
 const SEAT_TOKEN_OFFSET_Y = -40;
+
+const BOARD_VIEWBOX_WIDTH = 2048;
+const BOARD_VIEWBOX_HEIGHT = 1393;
+const COORDINATE_GRID_STEP = 100;
 
 const GATE_STATION_SEAT_TOKEN_WIDTH = 46;
 const GATE_STATION_SEAT_TOKEN_HEIGHT = 46;
@@ -189,7 +193,7 @@ const planetBuildingAnchors: Record<ClusterId, Record<PlanetKey, TokenAnchor[]>>
 const planetCloudCityAnchors: Record<ClusterId, Record<PlanetKey, TokenAnchor>> = {
   cluster1: {
     planetTri: { x: 790, y: 115, rotation: 0 },
-    planetMoon: { x: 1250, y: 90, rotation: 0 },
+    planetMoon: { x: 1270, y: 90, rotation: 0 },
     planetHex: { x: 1445, y: 235, rotation: 0 },
   },
   cluster2: {
@@ -200,11 +204,11 @@ const planetCloudCityAnchors: Record<ClusterId, Record<PlanetKey, TokenAnchor>> 
   cluster3: {
     planetTri: { x: 1860, y: 840, rotation: 0 },
     planetMoon: { x: 1600, y: 970, rotation: 0 },
-    planetHex: { x: 1420, y: 1125, rotation: 0 },
+    planetHex: { x: 1420, y: 1155, rotation: 0 },
   },
   cluster4: {
     planetTri: { x: 1255, y: 1335, rotation: 0 },
-    planetMoon: { x:850, y: 1160, rotation: 0 },
+    planetMoon: { x:930, y: 1160, rotation: 0 },
     planetHex: { x: 580, y: 1125, rotation: 0 },
   },
   cluster5: {
@@ -221,22 +225,22 @@ const planetCloudCityAnchors: Record<ClusterId, Record<PlanetKey, TokenAnchor>> 
 
 const gateFlagshipAnchors: Record<ClusterId, ShipAnchor[]> = {
   cluster1: [
-    { x: 1000, y: 360 },
-    { x: 1050, y: 365 },
-    { x: 1100, y: 370 },
-    { x: 1150, y: 375 },
+    { x: 1010, y: 360 },
+    { x: 1060, y: 365 },
+    { x: 1110, y: 370 },
+    { x: 1160, y: 375 },
   ],
   cluster2: [
     { x: 1250, y: 540 },
     { x: 1300, y: 540 },
-    { x: 1350, y: 540 },
-    { x: 1295, y: 685 },
+    { x: 1350, y: 515 },
+    { x: 1390, y: 570 },
   ],
   cluster3: [
-    { x: 1245, y: 840 },
-    { x: 1200, y: 885 },
-    { x: 1290, y: 885 },
-    { x: 1245, y: 910 },
+    { x: 1245, y: 830 },
+    { x: 1200, y: 875 },
+    { x: 1290, y: 875 },
+    { x: 1245, y: 900 },
   ],
   cluster4: [
     { x: 1046, y: 956 },
@@ -245,25 +249,25 @@ const gateFlagshipAnchors: Record<ClusterId, ShipAnchor[]> = {
     { x: 866, y: 902 },
   ],
   cluster5: [
-    { x: 715, y: 705 },
-    { x: 725, y: 770 },
-    { x: 765, y: 710 },
-    { x: 774, y: 780 },
+    { x: 735, y: 695 },
+    { x: 745, y: 760 },
+    { x: 785, y: 700 },
+    { x: 794, y: 770 },
   ],
   cluster6: [
-    { x: 700, y: 596 },
-    { x: 742, y: 550 },
-    { x: 785, y: 490 },
-    { x: 785, y: 420 },
+    { x: 738, y: 615 },
+    { x: 745, y: 550 },
+    { x: 800, y: 490 },
+    { x: 820, y: 420 },
   ],
 };
 
 const gateBlightAnchors: Record<ClusterId, ShipAnchor> = {
   cluster1: { x: 1160, y: 452 },
   cluster2: { x: 1280, y: 618 },
-  cluster3: { x: 1304, y: 780 },
+  cluster3: { x: 1304, y: 765 },
   cluster4: { x: 1095, y: 948 },
-  cluster5: { x: 760, y: 845 },
+  cluster5: { x: 770, y: 835 },
   cluster6: { x: 802, y: 560 },
 };
 
@@ -274,210 +278,210 @@ const gateStructureAnchors: Record<ClusterId, { port: TokenAnchor; station: Toke
     station: { x: 1240, y: 475, rotation: 0 },
   },
   cluster2: {
-    port: { x: 1360, y: 630, rotation: 0 },
-    station: { x: 1360, y: 690, rotation: 0 },
+    port: { x: 1360, y: 610, rotation: 0 },
+    station: { x: 1240, y: 630, rotation: 0 },
   },
   cluster3: {
-    port: { x: 1340, y: 845, rotation: 0 },
-    station: { x: 1283, y: 985, rotation: 0 },
+    port: { x: 1320, y: 835, rotation: 0 },
+    station: { x: 1270, y: 780, rotation: 0 },
   },
   cluster4: {
-    port: { x: 1105, y: 1055, rotation: 0 },
-    station: { x: 1155, y: 1035, rotation: 0 },
+    port: { x: 1125, y: 1015, rotation: 0 },
+    station: { x: 1175, y: 1035, rotation: 0 },
   },
   cluster5: {
-    port: { x: 832, y: 830, rotation: 0 },
-    station: { x: 732, y: 883, rotation: 0 },
+    port: { x: 845, y: 830, rotation: 0 },
+    station: { x: 839, y: 750, rotation: 0 },
   },
   cluster6: {
-    port: { x: 860, y: 505, rotation: 0 },
-    station: { x: 785, y: 630, rotation: 0 },
+    port: { x: 880, y: 505, rotation: 0 },
+    station: { x: 805, y: 630, rotation: 0 },
   },
 };
 
 const gateShipAnchors: Record<ClusterId, ShipAnchor[]> = {
   cluster1: [
-    { x: 933, y: 350 },
-    { x: 933, y: 375 },
-    { x: 933, y: 400 },
-    { x: 933, y: 425 },
-    { x: 933, y: 450 },
+    { x: 933, y: 345 },
+    { x: 933, y: 385 },
+    { x: 945, y: 420 },
+    { x: 950, y: 460 },
+    { x: 1050, y: 440 },
   ],
   cluster2: [
-    { x: 1400, y: 600 },
-    { x: 1400, y: 625 },
-    { x: 1400, y: 650 },
-    { x: 1400, y: 675 },
+    { x: 1395, y: 630 },
+    { x: 1310, y: 665 },
+    { x: 1320, y: 695 },
+    { x: 1400, y: 665 },
     { x: 1400, y: 700 },
   ],
   cluster3: [
-    { x: 1400, y: 795 },
-    { x: 1380, y: 836 },
-    { x: 1360, y: 877 },
-    { x: 1340, y: 918 },
-    { x: 1310, y: 950 },
+    { x: 1390, y: 785 },
+    { x: 1380, y: 826 },
+    { x: 1360, y: 867 },
+    { x: 1320, y: 918 },
+    { x: 1270, y: 965 },
   ],
   cluster4: [
-    { x: 1030, y: 1050 },
-    { x: 971, y: 1040 },
-    { x: 912, y: 1025 },
-    { x: 853, y: 1000 },
-    { x: 815, y: 976 },
+    { x: 1080, y: 1045 },
+    { x: 980, y: 1035 },
+    { x: 900, y: 1015 },
+    { x: 853, y: 985 },
+    { x: 800, y: 950 },
   ],
   cluster5: [
-    { x: 690, y: 835 },
-    { x: 675, y: 805 },
-    { x: 665, y: 770 },
-    { x: 665, y: 735 },
-    { x: 660, y: 704 },
+    { x: 705, y: 855 },
+    { x: 695, y: 815 },
+    { x: 685, y: 780 },
+    { x: 675, y: 745 },
+    { x: 670, y: 704 },
   ],
   cluster6: [
-    { x: 655, y: 580 },
-    { x: 670, y: 550 },
-    { x: 685, y: 520 },
-    { x: 700, y: 490 },
-    { x: 725, y: 460 },
+    { x: 675, y: 605 },
+    { x: 675, y: 565 },
+    { x: 690, y: 525 },
+    { x: 720, y: 485 },
+    { x: 745, y: 440 },
   ],
 };
 
 const planetShipAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor[]>> = {
   cluster1: {
     planetTri: [
-      { x: 992, y: 175 },
-      { x: 992, y: 200 },
-      { x: 992, y: 225 },
-      { x: 992, y: 250 },
-      { x: 992, y: 275 },
+      { x: 980, y: 170 },
+      { x: 980, y: 210 },
+      { x: 980, y: 245 },
+      { x: 980, y: 285 },
+      { x: 890, y: 295 },
     ],
     planetMoon: [
-      { x: 1065, y: 175 },
-      { x: 1065, y: 200 },
-      { x: 1065, y: 225 },
-      { x: 1065, y: 250 },
-      { x: 1065, y: 275 },
+      { x: 1080, y: 130 },
+      { x: 1080, y: 170 },
+      { x: 1080, y: 210 },
+      { x: 1080, y: 250 },
+      { x: 1080, y: 288 },
     ],
     planetHex: [
-      { x: 1325, y: 215 },
-      { x: 1305, y: 245 },
-      { x: 1288, y: 275 },
-      { x: 1270, y: 305 },
-      { x: 1250, y: 336 },
+      { x: 1355, y: 190 },
+      { x: 1335, y: 230 },
+      { x: 1315, y: 270 },
+      { x: 1295, y: 310 },
+      { x: 1275, y: 350 },
     ],
   },
   cluster2: {
     planetTri: [
-      { x: 1630, y: 430 },
-      { x: 1580, y: 450 },
-      { x: 1530, y: 470 },
-      { x: 1480, y: 488 },
-      { x: 1430, y: 508 },
+      { x: 1750, y: 375 },
+      { x: 1675, y: 405 },
+      { x: 1595, y: 435 },
+      { x: 1525, y: 465 },
+      { x: 1440, y: 490 },
     ],
     planetMoon: [
-      { x: 1716, y: 590 },
-      { x: 1660, y: 600 },
-      { x: 1602, y: 605 },
-      { x: 1545, y: 613 },
-      { x: 1485, y: 618 },
+      { x: 1836, y: 565 },
+      { x: 1750, y: 580 },
+      { x: 1660, y: 595 },
+      { x: 1575, y: 605 },
+      { x: 1490, y: 615 },
     ],
     planetHex: [
-      { x: 1700, y: 755 },
-      { x: 1640, y: 750 },
-      { x: 1584, y: 741 },
-      { x: 1534, y: 725 },
-      { x: 1480, y: 710 },
+      { x: 1640, y: 655 },
+      { x: 1640, y: 695 },
+      { x: 1640, y: 735 },
+      { x: 1550, y: 665 },
+      { x: 1550, y: 710 },
     ],
   },
   cluster3: {
     planetTri: [
-      { x: 1660, y: 917 },
-      { x: 1610, y: 900 },
-      { x: 1566, y: 880 },
-      { x: 1520, y: 865 },
-      { x: 1475, y: 845 },
+      { x: 1750, y: 940 },
+      { x: 1690, y: 915 },
+      { x: 1615, y: 890 },
+      { x: 1550, y: 865 },
+      { x: 1475, y: 835 },
     ],
     planetMoon: [
-      { x: 1625, y: 1134 },
-      { x: 1595, y: 1108 },
-      { x: 1565, y: 1084 },
-      { x: 1530, y: 1060 },
-      { x: 1498, y: 1035 },
-    ],
+  { x: 1860, y: 1300 },
+  { x: 1800, y: 1250 },
+  { x: 1740, y: 1200 },
+  { x: 1680, y: 1150 },
+  { x: 1620, y: 1100 },
+],
     planetHex: [
-      { x: 1490, y: 1100 },
-      { x: 1460, y: 1075 },
-      { x: 1430, y: 1050 },
-      { x: 1400, y: 1025 },
-      { x: 1370, y: 1000 },
-    ],
+  { x: 1520, y: 1140 },
+  { x: 1475, y: 1105 },
+  { x: 1430, y: 1070 },
+  { x: 1385, y: 1035 },
+  { x: 1340, y: 1000 },
+],
   },
   cluster4: {
     planetTri: [
-      { x: 1072, y: 1225 },
-      { x: 1072, y: 1195 },
-      { x: 1072, y: 1165 },
-      { x: 1072, y: 1135 },
-      { x: 1072, y: 1105 },
+      { x: 1092, y: 1275 },
+      { x: 1092, y: 1235 },
+      { x: 1092, y: 1195 },
+      { x: 1092, y: 1155 },
+      { x: 1092, y: 1105 },
     ],
     planetMoon: [
-      { x: 1002, y: 1225 },
-      { x: 1002, y: 1195 },
-      { x: 1002, y: 1165 },
-      { x: 1002, y: 1135 },
-      { x: 1002, y: 1105 },
+      { x: 780, y: 1285 },
+      { x: 800, y: 1235 },
+      { x: 825, y: 1185 },
+      { x: 860, y: 1135 },
+      { x: 880, y: 1085 },
     ],
     planetHex: [
-      { x: 720, y: 1190 },
-      { x: 740, y: 1155 },
-      { x: 760, y: 1120 },
-      { x: 780, y: 1085 },
-      { x: 800, y: 1050 },
-    ],
+  { x: 660, y: 1290 },
+  { x: 690, y: 1237.5 },
+  { x: 723, y: 1175 },
+  { x: 750, y: 1122.5 },
+  { x: 780, y: 1070 },
+],
   },
   cluster5: {
     planetTri: [
-      { x: 420, y: 960 },
-      { x: 470, y: 940 },
-      { x: 520, y: 920 },
-      { x: 570, y: 900 },
-      { x: 621, y: 880 },
-    ],
-    planetMoon: [
-      { x: 410, y: 918 },
-      { x: 460, y: 898 },
-      { x: 510, y: 878 },
-      { x: 560, y: 858 },
-      { x: 610, y: 838 },
-    ],
+  { x: 270, y: 1025 },
+  { x: 358.75, y: 990 },
+  { x: 447.5, y: 955 },
+  { x: 536.25, y: 920 },
+  { x: 625, y: 885 },
+],
+   planetMoon: [
+  { x: 245, y: 975 },
+  { x: 330, y: 941.25 },
+  { x: 415, y: 907.5 },
+  { x: 505, y: 872.75 },
+  { x: 585, y: 835 },
+],
     planetHex: [
-      { x: 330, y: 760 },
-      { x: 390, y: 755 },
-      { x: 450, y: 748 },
-      { x: 510, y: 740 },
-      { x: 570, y: 735 },
-    ],
+  { x: 220, y: 770 },
+  { x: 305, y: 757.5 },
+  { x: 390, y: 745 },
+  { x: 475, y: 732.5 },
+  { x: 560, y: 720 },
+],
   },
   cluster6: {
-    planetTri: [
-      { x: 245, y: 576 },
-      { x: 300, y: 584 },
-      { x: 355, y: 592 },
-      { x: 410, y: 600 },
-      { x: 465, y: 608 },
-    ],
+   planetTri: [
+  { x: 100, y: 550 },
+  { x: 191.25, y: 562.5 },
+  { x: 282.5, y: 575 },
+  { x: 373.75, y: 587.5 },
+  { x: 465, y: 600 },
+],
     planetMoon: [
-      { x: 440, y: 435 },
-      { x: 485, y: 455 },
-      { x: 530, y: 470 },
-      { x: 575, y: 487 },
-      { x: 620, y: 505 },
-    ],
+  { x: 265, y: 350 },
+  { x: 351.25, y: 385 },
+  { x: 437.5, y: 420 },
+  { x: 523.75, y: 455 },
+  { x: 610, y: 490 },
+],
     planetHex: [
-      { x: 595, y: 295 },
-      { x: 615, y: 320 },
-      { x: 645, y: 345 },
-      { x: 675, y: 370 },
-      { x: 705, y: 395 },
-    ],
+  { x: 465, y: 180 },
+  { x: 525, y: 228.75 },
+  { x: 585, y: 277.5 },
+  { x: 645, y: 326.25 },
+  { x: 705, y: 375 },
+],
   },
 };
 
@@ -485,23 +489,24 @@ const planetShipAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor[]>> = {
 const planetFlagshipAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor[]>> = {
   cluster1: {
     planetTri: [{ x: 795, y: 38 }, { x: 850, y: 38 }, { x: 905, y: 38 }, { x: 960, y: 38 }],
-    planetMoon: [{ x: 1060, y: 40 }, { x: 1115, y: 40 }, { x: 1060, y: 110 }, { x: 1115, y: 110 }],
+    planetMoon: [{ x: 1060, y: 40 }, { x: 1115, y: 40 }, { x: 1170, y: 40 }, { x: 1225, y: 40 }],
     planetHex: [{ x: 1575, y: 35 }, { x: 1630, y: 35 }, { x: 1685, y: 35 }, { x: 1740, y: 35 }],
   },
   cluster2: {
     planetTri: [{ x: 1900, y: 100 }, { x: 1970, y: 100 }, { x: 1900, y: 170 }, { x: 1970, y: 170 }],
-    planetMoon: [{ x: 1690, y: 470 }, { x: 1758, y: 470 }, { x: 1690, y: 542 }, { x: 1758, y: 542 },],
+    planetMoon: [{ x: 1740, y: 450 }, { x: 1800, y: 440 }, { x: 1680, y: 470 }, { x: 1620, y: 490 },],
     planetHex: [{ x: 1940, y: 660 }, { x: 2008, y: 660 }, { x: 1940, y: 734 }, { x: 2008, y: 734 },],
   },
   cluster3: {
     planetTri: [{ x: 1925, y: 890 }, { x: 1993, y: 890 }, { x: 1925, y: 964 }, { x: 1993, y: 964 }],
-    planetMoon: [{ x: 1680, y: 1030 }, { x: 1748, y: 1030 }, { x: 1680, y: 1104 }, { x: 1748, y: 1104 },],
+    planetMoon: [{ x: 1730, y: 1080 },{ x: 1798, y: 1080 },{ x: 1730, y: 1154 },{ x: 1798, y: 1154 },],
     planetHex: [{ x: 1620, y: 1275 }, { x: 1678, y: 1275 }, { x: 1620, y: 1349 }, { x: 1678, y: 1349 },],
   },
+
   cluster4: {
-    planetTri: [{ x: 1116, y: 1278 }, { x: 1184, y: 1278 }, { x: 1116, y: 1350 }, { x: 1184, y: 1350 }],
+    planetTri: [{ x: 1070, y: 1350 }, { x: 1130, y: 1350 }, { x: 1190, y: 1350 }, { x: 1250, y: 1350 }],
     planetMoon: [{ x: 725, y: 1350 }, { x: 780, y: 1350 }, { x: 835, y: 1350 }, { x: 890, y: 1350 }],
-    planetHex: [{ x: 445, y: 1260 }, { x: 510, y: 1260 }, { x: 445, y: 1345 }, { x: 510, y: 1345 }],
+    planetHex: [{ x: 390, y: 1345 }, { x: 445, y: 1345 }, { x: 510, y: 1345 }, { x: 565, y: 1345 }],
   },
   cluster5: {
     planetTri: [{ x: 40, y: 1155 }, { x: 108, y: 1155 }, { x: 40, y: 1229 }, { x: 108, y: 1229 },],
@@ -517,28 +522,28 @@ const planetFlagshipAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor[]>> 
 
 const planetBlightAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor>> = {
   cluster1: {
-    planetTri: { x: 890, y: 265 },
+    planetTri: { x: 860, y: 255 },
     planetMoon: { x: 1162, y: 286 },
-    planetHex: { x: 1315, y: 346 },
+    planetHex: { x: 1380, y: 300 },
   },
   cluster2: {
     planetTri: { x: 1420, y: 445 },
     planetMoon: { x: 1490, y: 555 },
-    planetHex: { x: 1515, y: 670 },
+    planetHex: { x: 1480, y: 690 },
   },
   cluster3: {
-    planetTri: { x: 1500, y: 800 },
+    planetTri: { x: 1550, y: 800 },
     planetMoon: { x: 1440, y: 930 },
-    planetHex: { x: 1340, y: 1050 },
+    planetHex: { x: 1340, y: 1090 },
   },
   cluster4: {
-    planetTri: { x: 1130, y: 1130 },
-    planetMoon: { x: 915, y: 1115 },
+    planetTri: { x: 1175, y: 1100 },
+    planetMoon: { x: 995, y: 1120 },
     planetHex: { x: 740, y: 1020 },
   },
   cluster5: {
-    planetTri: { x: 620, y: 930 },
-    planetMoon: { x: 570, y: 795 },
+    planetTri: { x: 615, y: 940 },
+    planetMoon: { x: 570, y: 788 },
     planetHex: { x: 550, y: 692 },
   },
   cluster6: {
@@ -566,7 +571,7 @@ const planetPortalAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor>> = {
   },
   cluster4: {
     planetTri: { x: 1340, y: 1355 },
-    planetMoon: { x: 770, y: 1280 },
+    planetMoon: { x: 990, y: 1180 },
     planetHex: { x: 300, y: 1355 },
   },
   cluster5: {
@@ -589,7 +594,7 @@ const planetBannerAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor>> = {
   },
   cluster2: {
     planetTri: { x: 1565, y: 357 },
-    planetMoon: { x: 1800, y: 550 },
+    planetMoon: { x: 1800, y: 520 },
     planetHex: { x: 1725, y: 748 },
   },
   cluster3: {
@@ -600,11 +605,11 @@ const planetBannerAnchors: Record<ClusterId, Record<PlanetKey, ShipAnchor>> = {
   cluster4: {
     planetTri: { x: 1185, y: 1250 },
     planetMoon: { x: 950, y: 1225 },
-    planetHex: { x: 730, y: 1175 },
+    planetHex: { x: 680, y: 1090 },
   },
   cluster5: {
     planetTri: { x: 315, y: 1140 },
-    planetMoon: { x: 460, y: 870 },
+    planetMoon: { x: 450, y: 830 },
     planetHex: { x: 200, y: 750 },
   },
   cluster6: {
@@ -853,7 +858,7 @@ const renderBuildingToken = (
   return (
     <image
       key={key}
-      className={`building-token ${tokenClassName}`}
+      className={`board-hover-token building-token ${tokenClassName}`}
       href={href}
       x={anchor.x - BUILDING_TOKEN_WIDTH / 2}
       y={anchor.y - BUILDING_TOKEN_HEIGHT / 2}
@@ -861,7 +866,7 @@ const renderBuildingToken = (
       height={BUILDING_TOKEN_HEIGHT}
       transform={`rotate(${rotation} ${anchor.x} ${anchor.y})`}
       preserveAspectRatio="xMidYMid meet"
-      style={{ pointerEvents: 'none' }}
+      style={{ pointerEvents: 'visiblePainted' }}
     />
   );
 };
@@ -880,7 +885,7 @@ const renderShipCountToken = (
   key: string
 ) => {
   return (
-    <g key={key} style={{ pointerEvents: 'none' }}>
+    <g key={key} className="board-hover-token" style={{ pointerEvents: 'visiblePainted' }}>
       <image
         href={shipTokenImages[color]}
         x={anchor.x - SHIP_TOKEN_WIDTH / 2}
@@ -920,13 +925,14 @@ const renderFlagshipToken = (
   return (
     <image
       key={key}
+      className="board-hover-token"
       href={flagshipTokenImages[color]}
       x={anchor.x - FLAGSHIP_TOKEN_WIDTH / 2}
       y={anchor.y - FLAGSHIP_TOKEN_HEIGHT / 2}
       width={FLAGSHIP_TOKEN_WIDTH}
       height={FLAGSHIP_TOKEN_HEIGHT}
       preserveAspectRatio="xMidYMid meet"
-      style={{ pointerEvents: 'none' }}
+      style={{ pointerEvents: 'visiblePainted' }}
     />
   );
 };
@@ -937,7 +943,7 @@ const renderBlightToken = (
   key: string
 ) => {
   return (
-    <g key={key} style={{ pointerEvents: 'none' }}>
+    <g key={key} className="board-hover-token" style={{ pointerEvents: 'visiblePainted' }}>
       <image
         href={blightTokenImage}
         x={anchor.x - BLIGHT_TOKEN_WIDTH / 2}
@@ -975,13 +981,14 @@ const renderPortalToken = (
   return (
     <image
       key={key}
+      className="board-hover-token"
       href={portalTokenImage}
       x={anchor.x - PORTAL_TOKEN_WIDTH / 2}
       y={anchor.y - PORTAL_TOKEN_HEIGHT / 2}
       width={PORTAL_TOKEN_WIDTH}
       height={PORTAL_TOKEN_HEIGHT}
       preserveAspectRatio="xMidYMid meet"
-      style={{ pointerEvents: 'none' }}
+      style={{ pointerEvents: 'visiblePainted' }}
     />
   );
 };
@@ -990,13 +997,14 @@ const renderBannerToken = (anchor: ShipAnchor, key: string) => {
   return (
     <image
       key={key}
+      className="board-hover-token"
       href={bannerTokenImage}
       x={anchor.x - BANNER_TOKEN_WIDTH / 2}
       y={anchor.y - BANNER_TOKEN_HEIGHT / 2}
       width={BANNER_TOKEN_WIDTH}
       height={BANNER_TOKEN_HEIGHT}
       preserveAspectRatio="xMidYMid meet"
-      style={{ pointerEvents: 'none' }}
+      style={{ pointerEvents: 'visiblePainted' }}
     />
   );
 };
@@ -1005,13 +1013,14 @@ const renderBrokenToken = (anchor: ShipAnchor, key: string) => {
   return (
     <image
       key={key}
+      className="board-hover-token"
       href={brokenTokenImage}
       x={anchor.x - BROKEN_TOKEN_WIDTH / 2}
       y={anchor.y - BROKEN_TOKEN_HEIGHT / 2}
       width={BROKEN_TOKEN_WIDTH}
       height={BROKEN_TOKEN_HEIGHT}
       preserveAspectRatio="xMidYMid meet"
-      style={{ pointerEvents: 'none' }}
+      style={{ pointerEvents: 'visiblePainted' }}
     />
   );
 };
@@ -1022,6 +1031,7 @@ const renderCloudCityToken = (anchor: TokenAnchor, key: string, color: PlayerCol
   return (
     <image
       key={key}
+      className="board-hover-token"
       href={buildingTokenImages[color].city}
       x={anchor.x - CLOUD_CITY_TOKEN_WIDTH / 2}
       y={anchor.y - CLOUD_CITY_TOKEN_HEIGHT / 2}
@@ -1029,7 +1039,7 @@ const renderCloudCityToken = (anchor: TokenAnchor, key: string, color: PlayerCol
       height={CLOUD_CITY_TOKEN_HEIGHT}
       transform={`rotate(${rotation} ${anchor.x} ${anchor.y})`}
       preserveAspectRatio="xMidYMid meet"
-      style={{ pointerEvents: 'none' }}
+      style={{ pointerEvents: 'visiblePainted' }}
     />
   );
 };
@@ -1049,13 +1059,14 @@ const renderSeatToken = (
   return (
     <image
       key={key}
+      className="board-hover-token"
       href={seatTokenImages[clusterId]}
       x={x - width / 2}
       y={y - height / 2}
       width={width}
       height={height}
       preserveAspectRatio="xMidYMid meet"
-      style={{ pointerEvents: 'none' }}
+      style={{ pointerEvents: 'visiblePainted' }}
     />
   );
 };
@@ -1096,6 +1107,18 @@ export default function BoardOverlay() {
   const selectedSpace = useGameStore((state) => state.selectedSpace);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const [debugMousePoint, setDebugMousePoint] = useState<{ x: number; y: number } | null>(null);
+  const [showCoordinateHelper, setShowCoordinateHelper] = useState(false);
+
+  const handleBoardMouseMove = (event: MouseEvent<SVGSVGElement>) => {
+    const boardElement = event.currentTarget;
+    const rect = boardElement.getBoundingClientRect();
+
+    const x = Math.round(((event.clientX - rect.left) / rect.width) * BOARD_VIEWBOX_WIDTH);
+    const y = Math.round(((event.clientY - rect.top) / rect.height) * BOARD_VIEWBOX_HEIGHT);
+
+    setDebugMousePoint({ x, y });
+  };
 
   const isActive = (space: SpaceShape) => {
     if (!selectedSpace) return false;
@@ -1120,10 +1143,85 @@ export default function BoardOverlay() {
         <svg
           ref={svgRef}
           className="board-overlay"
-          viewBox="0 0 2048 1393"
+          viewBox={`0 0 ${BOARD_VIEWBOX_WIDTH} ${BOARD_VIEWBOX_HEIGHT}`}
           preserveAspectRatio="none"
+          onMouseMove={showCoordinateHelper ? handleBoardMouseMove : undefined}
+          onMouseLeave={() => setDebugMousePoint(null)}
         >
+          <style>
+            {`
+              .board-hover-token {
+                pointer-events: visiblePainted;
+                transform-box: fill-box;
+                transform-origin: center;
+                transition:
+                  transform 160ms ease,
+                  filter 160ms ease;
+                transition-delay: 0s;
+                cursor: pointer;
+              }
 
+              .board-hover-token:hover {
+                transform: scale(1.75);
+                filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.75));
+                transition-delay: 0.5s;
+              }
+            `}
+          </style>
+
+          {showCoordinateHelper && (
+            <g className="coordinate-helper-grid" style={{ pointerEvents: 'none' }}>
+              {Array.from({ length: Math.floor(BOARD_VIEWBOX_WIDTH / COORDINATE_GRID_STEP) + 1 }).map((_, index) => {
+                const x = index * COORDINATE_GRID_STEP;
+
+                return (
+                  <g key={`grid-x-${x}`}>
+                    <line
+                      x1={x}
+                      y1={0}
+                      x2={x}
+                      y2={BOARD_VIEWBOX_HEIGHT}
+                      stroke="rgba(255, 255, 255, 0.22)"
+                      strokeWidth={1}
+                    />
+                    <text
+                      x={x + 4}
+                      y={18}
+                      fill="rgba(255, 255, 255, 0.75)"
+                      fontSize={18}
+                    >
+                      {x}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {Array.from({ length: Math.floor(BOARD_VIEWBOX_HEIGHT / COORDINATE_GRID_STEP) + 1 }).map((_, index) => {
+                const y = index * COORDINATE_GRID_STEP;
+
+                return (
+                  <g key={`grid-y-${y}`}>
+                    <line
+                      x1={0}
+                      y1={y}
+                      x2={BOARD_VIEWBOX_WIDTH}
+                      y2={y}
+                      stroke="rgba(255, 255, 255, 0.22)"
+                      strokeWidth={1}
+                    />
+                    <text
+                      x={4}
+                      y={y + 18}
+                      fill="rgba(255, 255, 255, 0.75)"
+                      fontSize={18}
+                    >
+                      {y}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          )}
 
           {spaces.map((space) => {
             const className = `board-space ${isActive(space) ? 'active' : ''}`;
@@ -1434,6 +1532,55 @@ export default function BoardOverlay() {
               return renderBrokenToken(anchor, `${space.id}-broken`);
             })}
         </svg>
+
+                {/* COORDINATE HELPER UI - temporarily disabled.
+            Keep this block in case we need to turn the board coordinate grid
+            and live mouse-position helper back on later.
+
+        <div
+          style={{
+            position: 'absolute',
+            left: '1rem',
+            bottom: '1rem',
+            zIndex: 5000,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.4rem',
+            background: 'rgba(0, 0, 0, 0.82)',
+            border: '1px solid rgba(255, 255, 255, 0.24)',
+            borderRadius: '0.6rem',
+            color: 'white',
+            padding: '0.65rem',
+            fontSize: '0.8rem',
+            pointerEvents: 'auto',
+          }}
+        >
+          <button
+            onClick={() => setShowCoordinateHelper((prev) => !prev)}
+            style={{
+              fontSize: '0.75rem',
+              padding: '0.25rem 0.45rem',
+            }}
+          >
+            {showCoordinateHelper ? 'Hide Coordinates' : 'Show Coordinates'}
+          </button>
+
+          {showCoordinateHelper && (
+            <>
+              <div>
+                Mouse:{' '}
+                {debugMousePoint
+                  ? `${debugMousePoint.x}, ${debugMousePoint.y}`
+                  : 'Move over board'}
+              </div>
+              <div style={{ opacity: 0.75 }}>
+                Board: {BOARD_VIEWBOX_WIDTH} × {BOARD_VIEWBOX_HEIGHT}
+              </div>
+            </>
+          )}
+        </div>
+
+        */}
       </div>
     </div>
   );

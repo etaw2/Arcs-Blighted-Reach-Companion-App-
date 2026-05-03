@@ -484,7 +484,7 @@ export const createInitialGameState = (gameNumber: SaveGameNumber = 1): GameStat
 
 export const createGameSaveFile = (
   state: GameState,
-  saveName = 'arcs-campaign-save'
+  saveName = 'Arcs Campaign Save'
 ): GameSaveFile => {
   const now = new Date().toISOString();
 

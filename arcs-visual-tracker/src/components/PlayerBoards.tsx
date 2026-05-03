@@ -143,6 +143,7 @@ export default function PlayerBoards() {
   const [selectedFlagshipBuilding, setSelectedFlagshipBuilding] = useState<
     Partial<Record<PlayerColor, BuildingType>>
   >({});
+  const [openFateDropdown, setOpenFateDropdown] = useState<PlayerColor | null>(null);
 
   const highestPower =
     activePlayers.length > 0 ? Math.max(...activePlayers.map((player) => player.power)) : 0;
@@ -150,10 +151,26 @@ export default function PlayerBoards() {
   const hasTieForHighest = highestPower > 0 && highestPowerPlayers.length > 1;
   const flagshipSlotVerticalOffset =
     activePlayerColors.length === 2 ? '2%' : activePlayerColors.length === 3 ? '1.5%' : '0%';
+  const getAvailableFateOptions = (currentColor: PlayerColor) =>
+    fateOptions.map((fate) => {
+      const isPickedByAnotherPlayer =
+        fate !== '' &&
+        activePlayers.some(
+          (otherPlayer) =>
+            otherPlayer.color !== currentColor && otherPlayer.fate === fate
+        );
+
+      return {
+        fate,
+        label: fate === '' ? 'None' : fate,
+        disabled: isPickedByAnotherPlayer,
+      };
+    });
 
   return (
     <section className="player-section">
       <h2>Player Areas</h2>
+      <p>Be sure to scroll down to see all player elements</p>
       <div className="player-grid">
         {playerColors
           .filter((color) => activePlayerColors.includes(color))
@@ -241,6 +258,366 @@ export default function PlayerBoards() {
                 
 
                 <div className="player-controls">
+<div className="inline-controls grow">
+  <label>Player</label>
+  <input
+    type="text"
+    value={player.name ?? ''}
+    onChange={(event) => updatePlayer(color, { name: event.target.value })}
+    placeholder="Player name"
+    style={{
+      minWidth: '10rem',
+      maxWidth: '14rem',
+      textAlign: 'center',
+    }}
+  />
+</div>
+                  <div className="inline-controls">
+                    <label>Power</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={powerInputs[color] !== '' ? powerInputs[color] : String(player.power)}
+                      onChange={(event) => {
+                        const value = event.target.value;
+
+                        if (/^\d*$/.test(value)) {
+                          setPowerInputs((prev) => ({
+                            ...prev,
+                            [color]: value,
+                          }));
+
+                          if (value !== '') {
+                            updatePlayer(color, { power: Math.max(0, Number(value)) });
+                          }
+                        }
+                      }}
+                      onFocus={(event) => {
+                        setPowerInputs((prev) => ({
+                          ...prev,
+                          [color]: String(player.power),
+                        }));
+                        event.target.select();
+                      }}
+                      onBlur={() => {
+                        const value = powerInputs[color];
+
+                        if (value === '') {
+                          updatePlayer(color, { power: 0 });
+                        }
+
+                        setPowerInputs((prev) => ({
+                          ...prev,
+                          [color]: '',
+                        }));
+                      }}
+                      className="power-input"
+                    />
+
+                    {player.initiative && (
+                      <img
+                        className="initiative-icon"
+                        src={initiativeMarkerImage}
+                        alt="initiative marker"
+                      />
+                    )}
+
+                    {isTiedForHighest && !player.initiative && (
+                      <button onClick={() => setInitiative(color)}>
+                        Take Initiative
+                      </button>
+                    )}
+                  </div>
+
+                 <div className="inline-controls grow">
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '0.6rem',
+      width: '100%',
+    }}
+  >
+    <label style={{ margin: 0, whiteSpace: 'nowrap' }}>Fate</label>
+
+    <div
+      style={{
+        position: 'relative',
+        minWidth: '10rem',
+        maxWidth: '14rem',
+        width: '100%',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          playSound(openFateDropdown === color ? 'panelClose' : 'panelOpen');
+          setOpenFateDropdown((prev) => (prev === color ? null : color));
+        }}
+        style={{
+          width: '100%',
+          borderRadius: '0.5rem',
+          border: '1px solid rgba(255, 255, 255, 0.28)',
+          background: 'rgba(24, 24, 24, 0.92)',
+          color: 'white',
+          padding: '0.55rem 0.75rem',
+          font: 'inherit',
+          textAlign: 'center',
+          cursor: 'pointer',
+        }}
+      >
+        {player.fate || 'None'} ▾
+      </button>
+
+      {openFateDropdown === color && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 0.35rem)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 20000,
+            minWidth: '12rem',
+            maxHeight: '18rem',
+            overflowY: 'auto',
+            borderRadius: '0.65rem',
+            border: '1px solid rgba(255, 255, 255, 0.24)',
+            background: 'rgba(24, 24, 24, 0.98)',
+            boxShadow: '0 16px 42px rgba(0, 0, 0, 0.7)',
+            padding: '0.35rem',
+          }}
+        >
+          {getAvailableFateOptions(color).map(({ fate, label, disabled }) => (
+            <button
+              key={fate || 'none'}
+              type="button"
+              disabled={disabled}
+              onClick={() => {
+                if (disabled) {
+                  return;
+                }
+
+                playSound('panelClose');
+                updatePlayer(color, { fate: fate || null });
+                setOpenFateDropdown(null);
+              }}
+              style={{
+                width: '100%',
+                border: 'none',
+                borderRadius: '0.45rem',
+                background:
+                  (player.fate ?? '') === fate
+                    ? 'rgba(255, 255, 255, 0.18)'
+                    : 'transparent',
+                color: disabled ? 'rgba(255, 255, 255, 0.32)' : 'white',
+                padding: '0.5rem 0.65rem',
+                font: 'inherit',
+                textAlign: 'left',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</div>
+                <div className="subsection">
+  <strong>Favors</strong>
+  <div className="favor-grid">
+    {playerColors
+      .filter((favorColor) => favorColor !== color)
+      .filter((favorColor) => activePlayerColors.includes(favorColor))
+      .map((favorColor) => (
+        <div className="resource-box" key={favorColor}>
+          <img
+            className="favor-icon"
+            src={favorImageByColor[favorColor]}
+            alt={`${favorColor} favor`}
+          />
+          <div>
+            <button onClick={() => changeFavor(favorColor, -1)}>-</button>
+            <strong>{player.favors[favorColor]}</strong>
+            <button onClick={() => changeFavor(favorColor, 1)}>+</button>
+          </div>
+        </div>
+      ))}
+  </div>
+</div>
+
+
+
+                  <div className="subsection">
+                    <strong>Allegiance</strong>
+                    <div className="chip-row">
+                      <button
+                        className={player.allegiance === 'regent' ? 'selected-chip' : ''}
+                        onClick={() => {
+                          if (player.allegiance !== 'regent') {
+                            playSound('panelOpen');
+                          }
+
+                          updatePlayer(player.color, { allegiance: 'regent' });
+                        }}
+                      >
+                        Regent
+                      </button>
+                      <button
+                        className={player.allegiance === 'outlaw' ? 'selected-chip' : ''}
+                        onClick={() => {
+                          if (player.allegiance !== 'outlaw') {
+                            playSound('panelOpen');
+                          }
+
+                          updatePlayer(player.color, { allegiance: 'outlaw' });
+                        }}
+                      >
+                        Outlaw
+                      </button>
+                    </div>
+                  </div>
+
+                  <div
+  style={{
+    display: 'flex',
+    flexDirection: 'row',
+    gap: '0.75rem',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  }}
+>
+  <div className="inline-controls">
+    <img
+      className="player-piece-icon"
+      src={shipImageByColor[color]}
+      alt={`${color} ship`}
+    />
+    <span>{player.ships}</span>
+  </div>
+
+  <div className="inline-controls">
+    <img
+      className="player-piece-icon"
+      src={cityImageByColor[color]}
+      alt={`${color} city`}
+    />
+    <span>{player.cities}</span>
+  </div>
+
+  <div className="inline-controls">
+    <img
+      className="player-piece-icon"
+      src={starportImageByColor[color]}
+      alt={`${color} starport`}
+    />
+    <span>{player.starports}</span>
+  </div>
+</div>
+
+                  <div className="subsection">
+                    <strong>Resources</strong>
+                    <div className="resource-grid">
+                      {Object.entries(player.resources)
+                        .filter(([resource]) => resource !== 'golem')
+                        .map(([resource, value]) => (
+                          <div className="resource-box" key={resource}>
+                            {resourceImageByType[resource as ResourceType] ? (
+                              <img
+                                className="resource-icon"
+                                src={resourceImageByType[resource as ResourceType]}
+                                alt={resource}
+                              />
+                            ) : (
+                              <span>{resource}</span>
+                            )}
+                            <div>
+                              <button onClick={() => changeResource(resource as ResourceType, -1)}>
+                                -
+                              </button>
+                              <strong>{value}</strong>
+                              <button onClick={() => changeResource(resource as ResourceType, 1)}>
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+
+                 {gameSetup.optionalTokens.caretakersGolems && (
+  <div className="subsection">
+    <strong>Golems</strong>
+    <div className="golem-grid">
+      {golemTypes.map((golemType) => (
+        <div className="golem-box" key={golemType}>
+          <img
+            className="resource-icon"
+            src={golemImageByType[golemType]}
+            alt={golemType}
+          />
+          <div>
+            <button onClick={() => toggleGolem(golemType)}>
+              {player.golems[golemType] ? 'On' : 'Off'}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+                  <div className="subsection">
+  <strong>Outrage</strong>
+  <div
+    className="chip-row"
+    style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+      justifyItems: 'center',
+      alignItems: 'center',
+      rowGap: '1.25rem',
+      columnGap: '0.6rem',
+      width: '100%',
+    }}
+  >
+    {outrageOptions.map((resource) => (
+      <button
+        key={resource}
+        className={player.outrage.includes(resource) ? 'selected-chip' : ''}
+        onClick={() => toggleOutrage(resource)}
+        style={{
+          width: '3.8rem',
+          height: '3.8rem',
+          padding: '0.25rem',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {resourceImageByType[resource] ? (
+          <img
+            className="resource-chip-icon"
+            src={resourceImageByType[resource]}
+            alt={resource}
+            style={{
+              width: '3rem',
+              height: '3rem',
+              objectFit: 'contain',
+            }}
+          />
+        ) : (
+          resource
+        )}
+      </button>
+    ))}
+  </div>
+</div>
+
                   {gameSetup.playersWithFlagships.includes(color) && (
                     <div
                       style={{
@@ -417,128 +794,6 @@ export default function PlayerBoards() {
                       </div>
                     </div>
                   )}
-<div className="inline-controls grow">
-  <label>Player</label>
-  <input
-    type="text"
-    value={player.name ?? ''}
-    onChange={(event) => updatePlayer(color, { name: event.target.value })}
-    placeholder="Player name"
-    style={{
-      minWidth: '10rem',
-      maxWidth: '14rem',
-      textAlign: 'center',
-    }}
-  />
-</div>
-                  <div className="inline-controls">
-                    <label>Power</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={powerInputs[color] !== '' ? powerInputs[color] : String(player.power)}
-                      onChange={(event) => {
-                        const value = event.target.value;
-
-                        if (/^\d*$/.test(value)) {
-                          setPowerInputs((prev) => ({
-                            ...prev,
-                            [color]: value,
-                          }));
-
-                          if (value !== '') {
-                            updatePlayer(color, { power: Math.max(0, Number(value)) });
-                          }
-                        }
-                      }}
-                      onFocus={(event) => {
-                        setPowerInputs((prev) => ({
-                          ...prev,
-                          [color]: String(player.power),
-                        }));
-                        event.target.select();
-                      }}
-                      onBlur={() => {
-                        const value = powerInputs[color];
-
-                        if (value === '') {
-                          updatePlayer(color, { power: 0 });
-                        }
-
-                        setPowerInputs((prev) => ({
-                          ...prev,
-                          [color]: '',
-                        }));
-                      }}
-                      className="power-input"
-                    />
-
-                    {player.initiative && (
-                      <img
-                        className="initiative-icon"
-                        src={initiativeMarkerImage}
-                        alt="initiative marker"
-                      />
-                    )}
-
-                    {isTiedForHighest && !player.initiative && (
-                      <button onClick={() => setInitiative(color)}>
-                        Take Initiative
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="inline-controls grow">
-                    <label>Fate</label>
-                    <select
-                      value={player.fate ?? ''}
-                      onChange={(event) => updatePlayer(color, { fate: event.target.value || null })}
-                    >
-                      {fateOptions.map((fate) => {
-                        const isPickedByAnotherPlayer =
-                          fate !== '' &&
-                          activePlayers.some(
-                            (otherPlayer) =>
-                              otherPlayer.color !== color && otherPlayer.fate === fate
-                          );
-
-                        return (
-                          <option
-                            key={fate}
-                            value={fate}
-                            disabled={isPickedByAnotherPlayer}
-                          >
-                            {fate === '' ? 'None' : fate}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-
-                <div className="subsection">
-  <strong>Favors</strong>
-  <div className="favor-grid">
-    {playerColors
-      .filter((favorColor) => favorColor !== color)
-      .filter((favorColor) => activePlayerColors.includes(favorColor))
-      .map((favorColor) => (
-        <div className="resource-box" key={favorColor}>
-          <img
-            className="favor-icon"
-            src={favorImageByColor[favorColor]}
-            alt={`${favorColor} favor`}
-          />
-          <div>
-            <button onClick={() => changeFavor(favorColor, -1)}>-</button>
-            <strong>{player.favors[favorColor]}</strong>
-            <button onClick={() => changeFavor(favorColor, 1)}>+</button>
-          </div>
-        </div>
-      ))}
-  </div>
-</div>
-
                   <div className="subsection">
                     <strong>Player Cards</strong>
                     {(player.cards ?? []).length === 0 ? (
@@ -570,6 +825,17 @@ export default function PlayerBoards() {
   onClick={() => {
     playSound('cardMove');
     scrapPlayerCardFromPlayer(color, card.id);
+    window.dispatchEvent(
+      new CustomEvent('arcs-card-moved-log', {
+        detail: {
+          card,
+          destination: 'Scrap Pile',
+          destinationType: 'scrapPile',
+          sourceType: 'player',
+          sourcePlayerColor: color,
+        },
+      })
+    );
   }}
 >
   Scrap
@@ -579,6 +845,17 @@ export default function PlayerBoards() {
   onClick={() => {
     playSound('cardMove');
     removePlayerCardFromPlayer(color, card.id);
+    window.dispatchEvent(
+      new CustomEvent('arcs-card-moved-log', {
+        detail: {
+          card,
+          destination: 'Available Cards',
+          destinationType: 'available',
+          sourceType: 'player',
+          sourcePlayerColor: color,
+        },
+      })
+    );
   }}
 >
   Remove
@@ -588,173 +865,6 @@ export default function PlayerBoards() {
                       </div>
                     )}
                   </div>
-
-                  <div className="subsection">
-                    <strong>Allegiance</strong>
-                    <div className="chip-row">
-                      <button
-                        className={player.allegiance === 'regent' ? 'selected-chip' : ''}
-                        onClick={() => {
-                          if (player.allegiance !== 'regent') {
-                            playSound('panelOpen');
-                          }
-
-                          updatePlayer(player.color, { allegiance: 'regent' });
-                        }}
-                      >
-                        Regent
-                      </button>
-                      <button
-                        className={player.allegiance === 'outlaw' ? 'selected-chip' : ''}
-                        onClick={() => {
-                          if (player.allegiance !== 'outlaw') {
-                            playSound('panelOpen');
-                          }
-
-                          updatePlayer(player.color, { allegiance: 'outlaw' });
-                        }}
-                      >
-                        Outlaw
-                      </button>
-                    </div>
-                  </div>
-
-                  <div
-  style={{
-    display: 'flex',
-    flexDirection: 'row',
-    gap: '0.75rem',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-  }}
->
-  <div className="inline-controls">
-    <img
-      className="player-piece-icon"
-      src={shipImageByColor[color]}
-      alt={`${color} ship`}
-    />
-    <span>{player.ships}</span>
-  </div>
-
-  <div className="inline-controls">
-    <img
-      className="player-piece-icon"
-      src={cityImageByColor[color]}
-      alt={`${color} city`}
-    />
-    <span>{player.cities}</span>
-  </div>
-
-  <div className="inline-controls">
-    <img
-      className="player-piece-icon"
-      src={starportImageByColor[color]}
-      alt={`${color} starport`}
-    />
-    <span>{player.starports}</span>
-  </div>
-</div>
-
-                  <div className="subsection">
-                    <strong>Resources</strong>
-                    <div className="resource-grid">
-                      {Object.entries(player.resources)
-                        .filter(([resource]) => resource !== 'golem')
-                        .map(([resource, value]) => (
-                          <div className="resource-box" key={resource}>
-                            {resourceImageByType[resource as ResourceType] ? (
-                              <img
-                                className="resource-icon"
-                                src={resourceImageByType[resource as ResourceType]}
-                                alt={resource}
-                              />
-                            ) : (
-                              <span>{resource}</span>
-                            )}
-                            <div>
-                              <button onClick={() => changeResource(resource as ResourceType, -1)}>
-                                -
-                              </button>
-                              <strong>{value}</strong>
-                              <button onClick={() => changeResource(resource as ResourceType, 1)}>
-                                +
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-
-                 {gameSetup.optionalTokens.caretakersGolems && (
-  <div className="subsection">
-    <strong>Golems</strong>
-    <div className="golem-grid">
-      {golemTypes.map((golemType) => (
-        <div className="golem-box" key={golemType}>
-          <img
-            className="resource-icon"
-            src={golemImageByType[golemType]}
-            alt={golemType}
-          />
-          <div>
-            <button onClick={() => toggleGolem(golemType)}>
-              {player.golems[golemType] ? 'On' : 'Off'}
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
-
-                  <div className="subsection">
-  <strong>Outrage</strong>
-  <div
-    className="chip-row"
-    style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
-      justifyItems: 'center',
-      alignItems: 'center',
-      rowGap: '1.25rem',
-      columnGap: '0.6rem',
-      width: '100%',
-    }}
-  >
-    {outrageOptions.map((resource) => (
-      <button
-        key={resource}
-        className={player.outrage.includes(resource) ? 'selected-chip' : ''}
-        onClick={() => toggleOutrage(resource)}
-        style={{
-          width: '3.8rem',
-          height: '3.8rem',
-          padding: '0.25rem',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        {resourceImageByType[resource] ? (
-          <img
-            className="resource-chip-icon"
-            src={resourceImageByType[resource]}
-            alt={resource}
-            style={{
-              width: '3rem',
-              height: '3rem',
-              objectFit: 'contain',
-            }}
-          />
-        ) : (
-          resource
-        )}
-      </button>
-    ))}
-  </div>
-</div>
                 </div>
               </div>
             );
