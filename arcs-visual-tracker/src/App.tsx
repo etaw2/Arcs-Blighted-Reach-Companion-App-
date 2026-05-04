@@ -1,8 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import BoardOverlay from './components/BoardOverlay';
-import CardsPanel from './components/CardsPanel';
-import PlayerBoards from './components/PlayerBoards';
-import SelectedSpacePanel from './components/SelectedSpacePanel';
+import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useGameStore } from './gameStore';
 import { createEmptyPlayer, type GameSetup, type PlayerColor } from './gameState';
 import { BackgroundMusic } from './components/BackgroundMusic';
@@ -13,6 +9,12 @@ import {
   setMusicVolume,
   setSfxVolume,
 } from './utils/sound';
+
+
+const BoardOverlay = lazy(() => import('./components/BoardOverlay'));
+const CardsPanel = lazy(() => import('./components/CardsPanel'));
+const PlayerBoards = lazy(() => import('./components/PlayerBoards'));
+const SelectedSpacePanel = lazy(() => import('./components/SelectedSpacePanel'));
 
 const allPlayerColors: PlayerColor[] = ['blue', 'red', 'yellow', 'white'];
 
@@ -297,10 +299,6 @@ export default function App() {
     setLocalSetup((prev) => {
       const isRemoving = prev.playersInGame.includes(color);
 
-      if (isRemoving && prev.playersInGame.length <= 2) {
-        return prev;
-      }
-
       const playersInGame = isRemoving
         ? prev.playersInGame.filter((c) => c !== color)
         : [...prev.playersInGame, color];
@@ -415,6 +413,17 @@ export default function App() {
     playSound('panelClose');
     startTitleMusic();
     resetGame();
+    updateGameSetup({
+      setupComplete: false,
+      playersInGame: [],
+      playersWithFlagships: [],
+    });
+    setLocalSetup((prev) => ({
+      ...prev,
+      setupComplete: false,
+      playersInGame: [],
+      playersWithFlagships: [],
+    }));
     setCardPanelSessionKey((prev) => prev + 1);
     setHasOpenedHelpAfterSetup(false);
     setCurrentSaveName('Arcs Campaign Save');
@@ -1315,16 +1324,45 @@ export default function App() {
 
     </p>
 
-    <ol>
-      <li>Complete Intermission Aid Steps.</li>
-      <li>Complete Initial Campaign Settings Steps.</li>
-      <li>Enter the Board State.</li>
-      <li>Add Cards from the Available Cards Menu.</li>
-      <li>Check Assigned Cards.</li>
-      <li>Fill Out Player Areas.</li>
-      <li>Save the Campaign File.</li>
-      <li>Prepare to Play Your Next Act.</li>
-    </ol>
+    <div
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '1.5rem',
+    margin: '1rem 0 1.25rem',
+  }}
+>
+  <ol
+    style={{
+      margin: 0,
+      paddingLeft: '1.5rem',
+      flex: '1 1 auto',
+    }}
+  >
+    <li>Complete Intermission Aid Steps.</li>
+    <li>Complete Initial Campaign Settings Steps.</li>
+    <li>Enter the Board State.</li>
+    <li>Add Cards from the Available Cards Menu.</li>
+    <li>Check Assigned Cards.</li>
+    <li>Fill Out Player Areas.</li>
+    <li>Save the Campaign File.</li>
+    <li>Prepare to Play Your Next Act.</li>
+  </ol>
+
+  <img
+  src="/assets/help/conspirator.png"
+  alt="Conspirator"
+  style={{
+    width: 'min(28vw, 13rem)',
+    maxHeight: '18rem',
+    objectFit: 'contain',
+    flexShrink: 0,
+    transform: 'translateX(-6rem)',
+    filter: 'drop-shadow(0 14px 28px rgba(0, 0, 0, 0.55))',
+  }}
+/>
+</div>
 
     <h2 style={{ color: '#c09437' }}>1. Complete Intermission Aid steps</h2>
 
@@ -1366,20 +1404,49 @@ export default function App() {
 
     <p>You can track pieces such as:</p>
 
-    <ul>
-      <li>Ships</li>
-      <li>Cities</li>
-      <li>Starports</li>
-      <li>Blight</li>
-      <li>Banners</li>
-      <li>Broken Tokens</li>
-      <li>Portals</li>
-      <li>Cloud Cities</li>
-      <li>Gate Ports</li>
-      <li>Gate Stations</li>
-      <li>Flagships</li>
-      <li>Seat Tokens, if they are being used</li>
-    </ul>
+    <div
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '1.5rem',
+    margin: '1rem 0 1.25rem',
+  }}
+>
+  <ul
+    style={{
+      margin: 0,
+      paddingLeft: '1.5rem',
+      flex: '1 1 auto',
+    }}
+  >
+    <li>Ships</li>
+    <li>Cities</li>
+    <li>Starports</li>
+    <li>Blight</li>
+    <li>Banners</li>
+    <li>Broken Tokens</li>
+    <li>Portals</li>
+    <li>Cloud Cities</li>
+    <li>Gate Ports</li>
+    <li>Gate Stations</li>
+    <li>Flagships</li>
+    <li>Seat Tokens, if they are being used</li>
+  </ul>
+
+  <img
+    src="/assets/help/planetbreaker.png"
+    alt="Planet Breaker"
+    style={{
+      width: 'min(34vw, 18rem)',
+      maxHeight: '24rem',
+      objectFit: 'contain',
+      flexShrink: 0,
+      transform: 'translate(-5rem, -2rem)',
+      filter: 'drop-shadow(0 14px 28px rgba(0, 0, 0, 0.55))',
+    }}
+  />
+</div>
 
     <p>Continue until the board in the app matches the physical game board.</p>
 
@@ -1398,14 +1465,43 @@ export default function App() {
 
     <p>From Available Cards, cards can be added to:</p>
 
-    <ul>
-      <li>Court</li>
-      <li>Laws</li>
-      <li>Edicts</li>
-      <li>Summit</li>
-      <li>Action Deck</li>
-      <li>A Player Area</li>
-    </ul>
+    <div
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '1.5rem',
+    margin: '1rem 0 1.25rem',
+  }}
+>
+  <ul
+    style={{
+      margin: 0,
+      paddingLeft: '1.5rem',
+      flex: '1 1 auto',
+    }}
+  >
+    <li>Court</li>
+    <li>Laws</li>
+    <li>Edicts</li>
+    <li>Summit</li>
+    <li>Action Deck</li>
+    <li>A Player Area</li>
+  </ul>
+
+  <img
+    src="/assets/help/warden.png"
+    alt="Warden"
+    style={{
+      width: 'min(28vw, 14rem)',
+maxHeight: '19rem',
+      objectFit: 'contain',
+      flexShrink: 0,
+      transform: 'translate(-5rem, -1rem)',
+      filter: 'drop-shadow(0 14px 28px rgba(0, 0, 0, 0.55))',
+    }}
+  />
+</div>
 
     <p>
       Some Cards have an <strong>Add to Player</strong> button. Click it, then choose the Player who
@@ -1421,14 +1517,43 @@ export default function App() {
 
     <p>Assigned Cards includes:</p>
 
-    <ul>
-      <li>Court</li>
-      <li>Laws</li>
-      <li>Edicts</li>
-      <li>Summit</li>
-      <li>Action Deck</li>
-      <li>Scrap Pile</li>
-    </ul>
+    <div
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '1.5rem',
+    margin: '1rem 0 1.25rem',
+  }}
+>
+  <ul
+    style={{
+      margin: 0,
+      paddingLeft: '1.5rem',
+      flex: '1 1 auto',
+    }}
+  >
+    <li>Court</li>
+    <li>Laws</li>
+    <li>Edicts</li>
+    <li>Summit</li>
+    <li>Action Deck</li>
+    <li>Scrap Pile</li>
+  </ul>
+
+  <img
+    src="/assets/help/advocate.png"
+    alt="Advocate"
+    style={{
+      width: 'min(28vw, 14rem)',
+      maxHeight: '19rem',
+      objectFit: 'contain',
+      flexShrink: 0,
+      transform: 'translate(-5rem, -1rem)',
+      filter: 'drop-shadow(0 14px 28px rgba(0, 0, 0, 0.55))',
+    }}
+  />
+</div>
 
     <p>
       If a Court Card was scrapped during your campaign, you can scrap it from the Court in the app.
@@ -1444,19 +1569,48 @@ export default function App() {
 
     <p>You can track:</p>
 
-    <ul>
-      <li>Player Name</li>
-      <li>Power</li>
-      <li>Fate</li>
-      <li>Allegiance</li>
-      <li>Ships, Cities, and Starports remaining</li>
-      <li>Resources</li>
-      <li>Favors</li>
-      <li>Outrage</li>
-      <li>Golems, if they are being used</li>
-      <li>Player-Owned Cards</li>
-      <li>Flagship Board Pieces, if they are being used</li>
-    </ul>
+    <div
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '1.5rem',
+    margin: '1rem 0 1.25rem',
+  }}
+>
+  <ul
+    style={{
+      margin: 0,
+      paddingLeft: '1.5rem',
+      flex: '1 1 auto',
+    }}
+  >
+    <li>Player Name</li>
+    <li>Power</li>
+    <li>Fate</li>
+    <li>Allegiance</li>
+    <li>Ships, Cities, and Starports remaining</li>
+    <li>Resources</li>
+    <li>Favors</li>
+    <li>Outrage</li>
+    <li>Golems, if they are being used</li>
+    <li>Player-Owned Cards</li>
+    <li>Flagship Board Pieces, if they are being used</li>
+  </ul>
+
+  <img
+    src="/assets/help/redeemer.png"
+    alt="Redeemer"
+    style={{
+      width: 'min(28vw, 14rem)',
+      maxHeight: '19rem',
+      objectFit: 'contain',
+      flexShrink: 0,
+      transform: 'translate(-4rem, -1rem)',
+      filter: 'drop-shadow(0 14px 28px rgba(0, 0, 0, 0.55))',
+    }}
+  />
+</div>
 
     <p>The goal is for each Player Area in the app to match that player’s physical area.</p>
 
@@ -1469,16 +1623,45 @@ export default function App() {
 
     <p>The app saves the current campaign state, including:</p>
 
-    <ul>
-      <li>Board Pieces</li>
-      <li>Player Areas</li>
-      <li>Court Cards</li>
-      <li>Rules Cards</li>
-      <li>Action Deck</li>
-      <li>Scrap Pile</li>
-      <li>Player Cards</li>
-      <li>Setup Options</li>
-    </ul>
+    <div
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '1.5rem',
+    margin: '1rem 0 1.25rem',
+  }}
+>
+  <ul
+    style={{
+      margin: 0,
+      paddingLeft: '1.5rem',
+      flex: '1 1 auto',
+    }}
+  >
+    <li>Board Pieces</li>
+    <li>Player Areas</li>
+    <li>Court Cards</li>
+    <li>Rules Cards</li>
+    <li>Action Deck</li>
+    <li>Scrap Pile</li>
+    <li>Player Cards</li>
+    <li>Setup Options</li>
+  </ul>
+
+  <img
+    src="/assets/help/pathfinder.png"
+    alt="Pathfinder"
+    style={{
+      width: 'min(28vw, 14rem)',
+      maxHeight: '19rem',
+      objectFit: 'contain',
+      flexShrink: 0,
+      transform: 'translate(-5rem, -1rem)',
+      filter: 'drop-shadow(0 14px 28px rgba(0, 0, 0, 0.55))',
+    }}
+  />
+</div>
 
     <p>After saving, you can safely put the physical game away.</p>
 
@@ -1488,15 +1671,44 @@ export default function App() {
       At the start of your next session, open the app and load the saved campaign file. Rebuild your game state on the physical board as represented in the app.
     </p>
 
-    <ul>
-      <li>Rebuild the Board from the app map.</li>
-      <li>Rebuild each Player Area from the Player Areas section.</li>
-      <li>Rebuild the Court from Assigned Cards.</li>
-      <li>Rebuild Laws, Edicts, and Summit Cards.</li>
-      <li>Rebuild the Action Deck.</li>
-      <li>Rebuild the Scrap Pile.</li>
-      <li>Return Available Cards to their correct supply.</li>
-    </ul>
+    <div
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '1.5rem',
+    margin: '1rem 0 1.25rem',
+  }}
+>
+  <ul
+    style={{
+      margin: 0,
+      paddingLeft: '1.5rem',
+      flex: '1 1 auto',
+    }}
+  >
+    <li>Rebuild the Board from the app map.</li>
+    <li>Rebuild each Player Area from the Player Areas section.</li>
+    <li>Rebuild the Court from Assigned Cards.</li>
+    <li>Rebuild Laws, Edicts, and Summit Cards.</li>
+    <li>Rebuild the Action Deck.</li>
+    <li>Rebuild the Scrap Pile.</li>
+    <li>Return Available Cards to their correct supply.</li>
+  </ul>
+
+  <img
+    src="/assets/help/gatewraith.png"
+    alt="Gatewraith"
+    style={{
+      width: 'min(28vw, 14rem)',
+      maxHeight: '19rem',
+      objectFit: 'contain',
+      flexShrink: 0,
+      transform: 'translate(-3rem, -1rem)',
+      filter: 'drop-shadow(0 14px 28px rgba(0, 0, 0, 0.55))',
+    }}
+  />
+</div>
 
     <p>
       Once the physical game state matches the app, continue with the steps outlined in the <strong>Act II</strong> &
@@ -1741,7 +1953,7 @@ export default function App() {
 
             <div className="setup-section">
   <strong style={{ color: '#c09437' }}>Players in Game</strong>
-  <p>Remove inactive players:</p>
+  <p>Select at least two active players:</p>
   <div className="chip-row">
     {allPlayerColors.map((color) => (
       <button
@@ -1857,12 +2069,34 @@ export default function App() {
               </button>
 
               <button
-                className="start-app-button"
-                onClick={handleConfirmSetup}
-                disabled={localSetup.playersInGame.length < 2}
-              >
-                Next
-              </button>
+  onClick={handleConfirmSetup}
+  disabled={localSetup.playersInGame.length < 2}
+  style={{
+    background:
+      localSetup.playersInGame.length < 2
+        ? '#5f1f1a'
+        : '#2f7d32',
+    color: '#ffffff',
+    border:
+      localSetup.playersInGame.length < 2
+        ? '1px solid #d2ae50'
+        : '1px solid rgba(255, 255, 255, 0.24)',
+    boxShadow:
+      localSetup.playersInGame.length < 2
+        ? '0 0 0 1px rgba(210, 174, 80, 0.18)'
+        : undefined,
+    opacity:
+      localSetup.playersInGame.length < 2
+        ? 0.95
+        : 1,
+    cursor:
+      localSetup.playersInGame.length < 2
+        ? 'not-allowed'
+        : 'pointer',
+  }}
+>
+  {localSetup.playersInGame.length < 2 ? 'Next: Choose at least two players to proceed' : 'Next'}
+</button>
             </div>
           </div>
         </div>
@@ -1922,14 +2156,16 @@ export default function App() {
           </div>
         </header>
 
-        <section className="main-layout">
-          <BoardOverlay />
-          <SelectedSpacePanel />
-        </section>
+        <Suspense fallback={<div className="panel">Loading app...</div>}>
+          <section className="main-layout">
+            <BoardOverlay />
+            <SelectedSpacePanel />
+          </section>
 
-        <CardsPanel key={cardPanelSessionKey} />
+          <CardsPanel key={cardPanelSessionKey} />
 
-        <PlayerBoards />
+          <PlayerBoards />
+        </Suspense>
       </div>
     </>
   );
