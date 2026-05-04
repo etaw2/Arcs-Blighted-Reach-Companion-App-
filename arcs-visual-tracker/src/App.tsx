@@ -1545,8 +1545,8 @@ maxHeight: '19rem',
     src="/assets/help/advocate.png"
     alt="Advocate"
     style={{
-      width: 'min(28vw, 14rem)',
-      maxHeight: '19rem',
+      width: 'min(20vw, 10rem)',
+maxHeight: '14rem',
       objectFit: 'contain',
       flexShrink: 0,
       transform: 'translate(-5rem, -1rem)',
