@@ -19,6 +19,12 @@ const SelectedSpacePanel = lazy(() => import('./components/SelectedSpacePanel'))
 const allPlayerColors: PlayerColor[] = ['blue', 'red', 'yellow', 'white'];
 
 const APP_VERSION = 'v.1.0';
+const setupPlayerButtonColors: Record<PlayerColor, string> = {
+  blue: '#1697aa',
+  red: '#e0513c',
+  yellow: '#fdb414',
+  white: '#ffffff',
+};
 
 const formatPlayerColor = (color: PlayerColor) =>
   color.charAt(0).toUpperCase() + color.slice(1);
@@ -1953,13 +1959,16 @@ maxHeight: '14rem',
 
             <div className="setup-section">
   <strong style={{ color: '#c09437' }}>Players in Game</strong>
-  <p>Select at least two active players:</p>
+  <p>Choose at least two active players.</p>
   <div className="chip-row">
     {allPlayerColors.map((color) => (
       <button
         key={color}
         className={localSetup.playersInGame.includes(color) ? 'selected-chip' : ''}
         onClick={() => togglePlayer(color)}
+        style={{
+          color: setupPlayerButtonColors[color],
+        }}
       >
         {formatPlayerColor(color)}
       </button>

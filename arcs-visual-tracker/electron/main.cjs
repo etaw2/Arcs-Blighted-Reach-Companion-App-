@@ -208,13 +208,13 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-    registerSaveHandlers();
-
     if (!isDev) {
         registerAppProtocol();
     }
 
     createWindow();
+
+    registerSaveHandlers();
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
